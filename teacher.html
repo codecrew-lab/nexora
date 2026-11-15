@@ -1087,5 +1087,49 @@
   if(document.readyState!=='loading')init();
 })();
 </script>
+
+<script>
+(function(){
+  const el=id=>document.getElementById(id);
+  const message=(value,bad=false)=>{el('siblingManagerMessage').textContent=value;el('siblingManagerMessage').style.color=bad?'#ef4444':'var(--text-secondary)'};
+  async function initSiblingManager(){
+    const a=el('siblingStudentA'),b=el('siblingStudentB');
+    if(!a||!b||!window.supabaseClient)return;
+    const {data:sessionData}=await supabaseClient.auth.getSession();
+    if(sessionData?.session?.user?.email?.toLowerCase()!=='teacher@auraway.app'){
+      message('Authorised teacher sign-in required.',true);return;
+    }
+    const {data:students,error}=await supabaseClient.from('students').select('id,student_name,class_name').order('class_name').order('student_name');
+    if(error){message('Could not load student list.',true);return;}
+    [a,b].forEach(select=>{students.forEach(st=>{const option=document.createElement('option');option.value=st.id;option.textContent=st.student_name+' — '+st.class_name;select.append(option)})});
+    await loadLinks();
+  }
+  async function loadLinks(){
+    const box=el('siblingLinksList');box.replaceChildren();
+    const {data,error}=await supabaseClient.rpc('pulse_teacher_list_sibling_links');
+    if(error){box.textContent='Could not load sibling links.';return;}
+    if(!data?.length){box.textContent='No sibling links verified yet.';return;}
+    data.forEach(link=>{
+      const row=document.createElement('div');row.className='student-row';
+      const info=document.createElement('span');info.textContent=link.student_a_name+' ('+link.student_a_class+') ↔ '+link.student_b_name+' ('+link.student_b_class+')';
+      const remove=document.createElement('button');remove.type='button';remove.className='btn teacher-secondary-action';remove.textContent='Remove link';
+      remove.addEventListener('click',async()=>{if(!confirm('Remove this verified sibling link?'))return;const {error}=await supabaseClient.rpc('pulse_teacher_unlink_siblings',{p_student_a_id:link.student_a_id,p_student_b_id:link.student_b_id});if(error){message('Could not remove link.',true);return}message('Sibling link removed.');await loadLinks()});
+      row.append(info,remove);box.append(row);
+    });
+  }
+  el('saveSiblingLink')?.addEventListener('click',async()=>{
+    const one=Number(el('siblingStudentA').value),two=Number(el('siblingStudentB').value);
+    if(!one||!two){message('Choose both student accounts.',true);return}
+    if(one===two){message('Choose two different students.',true);return}
+    const button=el('saveSiblingLink');button.disabled=true;
+    const {error}=await supabaseClient.rpc('pulse_teacher_link_siblings',{p_student_a_id:one,p_student_b_id:two});
+    button.disabled=false;
+    if(error){message('Could not create link. Check teacher access.',true);return}
+    message('Sibling accounts linked and verified.');await loadLinks();
+  });
+  document.addEventListener('DOMContentLoaded',initSiblingManager,{once:true});
+  if(document.readyState!=='loading')initSiblingManager();
+})();
+</script>
 </body>
 </html>
