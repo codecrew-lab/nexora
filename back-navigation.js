@@ -1,6 +1,6 @@
-/* PULSE navigation: use the browser / installed-app native Back action.
-   Intentionally do not create a floating Back button or override history navigation. */
+/* PULSE navigation: rely on the device/browser native Back action.
+   No floating Back control is created on any page. */
 (() => {
-  // Keep this shared file harmless for pages that still reference it.
-  // The phone's built-in Back action follows the normal browser history.
+  // Deliberately leave browser history untouched so Android's system Back
+  // button and the browser's native Back action work normally.
 })();
