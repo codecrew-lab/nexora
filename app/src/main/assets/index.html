@@ -86,7 +86,6 @@
         <section class="student-nav-section"><h2>INSIGHTS</h2><ul>
           <li><a href="analytics.html">📊 <span>Analytics</span></a></li>
           <li><a href="focus.html">⏱️ <span>Focus Centre</span></a></li>
-          <li><a href="wellness.html">🌱 <span>Wellness</span></a></li>
           <li><a href="progress.html">🏆 <span>Progress</span></a></li>
         </ul></section>
         <section class="student-nav-section"><h2>MORE</h2><ul>
@@ -138,7 +137,7 @@
         <div class="card">
           <h3>Pending Assignments</h3>
           <p id="dashPendingAssign" style="font-size: 2rem; font-weight: 700; color: #f59e0b; margin-top: 8px;">0 Due</p>
-          <p id="dashHydrationSub" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">Water: 0/8 cups</p>
+          <p id="dashHydrationSub" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">Awaiting submission</p>
         </div>
         <div class="card">
           <h3>Study Streak 🔥</h3>
@@ -251,7 +250,6 @@
     const tasks = JSON.parse(localStorage.getItem('auraway_tasks')) || [];
     const focusStats = JSON.parse(localStorage.getItem('auraway_focus_stats')) || { totalMinutes: 0, sessions: 0 };
     const assignments = JSON.parse(localStorage.getItem('auraway_assignments')) || [];
-    const waterCups = parseInt(localStorage.getItem('auraway_water')) || 0;
 
     // 1. Task Progress
     const completedTasks = tasks.filter(t => t.completed).length;
@@ -263,10 +261,10 @@
     document.getElementById('dashFocusTime').textContent = `${focusStats.totalMinutes} mins`;
     document.getElementById('dashFocusSub').textContent = `${focusStats.sessions} sessions completed`;
 
-    // 3. Pending Assignments & Wellness
+    // 3. Pending Assignments
     const pendingAssign = assignments.filter(a => a.status !== 'Submitted').length;
     document.getElementById('dashPendingAssign').textContent = `${pendingAssign} Due`;
-    document.getElementById('dashHydrationSub').textContent = `Hydration: ${waterCups}/8 cups today`;
+    document.getElementById('dashHydrationSub').textContent = 'Awaiting submission';
 
     // Study streak from real task/focus activity dates
     function getStudyStreak() {
