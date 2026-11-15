@@ -15,7 +15,6 @@ const ASSETS_TO_CACHE = [
   './notes.html',
   './analytics.html',
   './focus.html',
-  './wellness.html',
   './progress.html',
   './search.html',
   './settings.html',
