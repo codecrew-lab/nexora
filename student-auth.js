@@ -128,6 +128,29 @@ function pulseAddStudentAccountControls() {
   signOutButton.addEventListener("click", studentLogout);
   wrap.append(siblingsButton, signOutButton); header.appendChild(wrap);
 }
+async function pulseLoadSiblingAccounts() {
+  const section=document.getElementById("pulseSiblingAccounts");
+  if(!section||!supabaseClient)return;
+  const list=section.querySelector("[data-sibling-list]");
+  if(!list)return;
+  list.textContent="Loading linked accounts…";
+  const {data,error}=await supabaseClient.rpc("pulse_get_my_siblings");
+  if(error){list.textContent="Sibling accounts are temporarily unavailable.";return;}
+  if(!data?.length){list.textContent="No sibling accounts have been linked by your teacher yet.";return;}
+  list.replaceChildren();
+  data.forEach(sibling=>{
+    const card=document.createElement("article");
+    card.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-card);";
+    const info=document.createElement("div"),name=document.createElement("strong"),klass=document.createElement("p");
+    name.textContent=sibling.student_name||"Student";klass.textContent=sibling.class_name||"Class not set";
+    klass.style.cssText="margin:4px 0 0;color:var(--text-secondary);font-size:.85rem;";
+    info.append(name,klass);
+    const button=document.createElement("button");button.type="button";button.className="btn";button.textContent="Switch account";
+    button.addEventListener("click",()=>pulseOpenSiblingSwitch(sibling));
+    card.append(info,button);list.append(card);
+  });
+}
+
 function pulseOpenSiblingSwitch(sibling) {
   const section = document.getElementById("pulseSiblingAccounts");
   if (!section) return;
