@@ -128,4 +128,5 @@
     window.importData=async function(event){const file=event.target.files?.[0];if(!file)return;try{const parsed=JSON.parse(await file.text()),payload=parsed.data&&typeof parsed.data==='object'?parsed.data:parsed,entries=Object.entries(payload).filter(([k,v])=>DATA_KEYS.includes(k)&&typeof v==='string');if(!entries.length)throw new Error('No supported PULSE data found.');if(!confirm('Restore this backup? Existing saved values for included sections will be replaced.'))return;entries.forEach(([k,v])=>localStorage.setItem(k,v));alert('Backup restored. Reloading page.');location.reload()}catch(error){alert('Could not restore backup: '+error.message)}finally{event.target.value=''}};
     window.clearAllData=function(){if(!confirm('Delete all locally saved PULSE data? This cannot be undone unless you have a backup.'))return;DATA_KEYS.forEach(k=>localStorage.removeItem(k));alert('Local data cleared.');location.href='index.html'};
   </script>  <script src="navigation.js" defer></script>
+  <script src="back-navigation.js" defer></script>
 </body></html>
