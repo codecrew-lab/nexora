@@ -126,9 +126,16 @@
 
       <section class="card" id="pulseSiblingAccounts" aria-labelledby="pulseSiblingHeading" style="margin:16px 0;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div><h2 id="pulseSiblingHeading" style="font-size:1.05rem;margin:0;">👨‍👩‍👧 My Siblings</h2><p style="color:var(--text-secondary);font-size:.82rem;margin:4px 0 0;">Teacher-approved linked student accounts. Your school data stays separate.</p></div>
+          <div><h2 id="pulseSiblingHeading" style="font-size:1.05rem;margin:0;">👨‍👩‍👧 My Siblings</h2><p style="color:var(--text-secondary);font-size:.82rem;margin:4px 0 0;">Link a sibling using their student code and password. Your school data stays separate.</p></div>
           <button type="button" class="btn" onclick="pulseLoadSiblingAccounts()">Refresh</button>
         </div>
+        <form data-sibling-link-form style="display:grid;gap:10px;margin-top:14px;padding:14px;border:1px solid var(--border-color);border-radius:12px;">
+          <strong>＋ Add a sibling</strong>
+          <label>Sibling student code<input name="code" required autocomplete="username" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label>
+          <label>Sibling password<input name="password" type="password" required autocomplete="current-password" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label>
+          <p data-switch-message role="status" style="margin:0;color:var(--text-secondary);font-size:.85rem;">Your sibling's own login verifies and approves the link. Passwords are not saved.</p>
+          <button class="btn" type="submit">Verify & link sibling</button>
+        </form>
         <div data-sibling-list style="display:grid;gap:8px;margin-top:12px;">Loading linked accounts…</div>
       </section>
 
