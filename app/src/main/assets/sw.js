@@ -74,7 +74,7 @@ self.addEventListener('fetch', event => {
       const cachedResponse = await cache.match(request);
       const networkRequest = fetch(request).then(response => {
         if (response && response.ok && response.type === 'basic') {
-          cache.put(request, response.clone());
+          cache.put(request, response.clone()).catch(() => {});
         }
         return response;
       });
