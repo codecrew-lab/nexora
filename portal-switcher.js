@@ -7,6 +7,9 @@
   ];
 
   const currentFile = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+
+  // The three-portal chooser is the landing page; keep its layout free of the floating switcher.
+  if (currentFile === 'portals.html') return;
   const current = currentFile.startsWith('teacher') ? 'teacher'
     : currentFile.startsWith('parent') ? 'parent' : 'student';
 
