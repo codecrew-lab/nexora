@@ -4,7 +4,6 @@
   window.__pulseBackNavigationInstalled = true;
 
   const pageName = () => (location.pathname.split("/").pop() || "index.html").toLowerCase();
-  if (pageName() === "index.html") return;
 
   const button = document.createElement("button");
   button.type = "button";
@@ -13,14 +12,16 @@
   button.innerHTML = '<span aria-hidden="true">←</span><span>Back</span>';
   button.addEventListener("click", () => {
     if (window.history.length > 1) window.history.back();
-    else window.location.href = pageName() === "portals.html" ? "index.html" : "portals.html";
+    else window.location.href = pageName() === "portals.html" || pageName() === "index.html"
+      ? "portals.html"
+      : "portals.html";
   });
 
   const style = document.createElement("style");
   style.textContent = `
     .pulse-back-button {
       display:inline-flex; align-items:center; justify-content:center; gap:7px;
-      min-height:38px; padding:0 13px; margin:0 0 12px;
+      min-height:38px; padding:0 13px; margin:0 0 16px;
       border:1px solid var(--border-color, rgba(120,130,150,.28));
       border-radius:11px; background:var(--bg-card, rgba(255,255,255,.08));
       color:var(--text-primary, inherit); box-shadow:0 3px 12px rgba(20,30,50,.10);
@@ -30,22 +31,11 @@
     .pulse-back-button span:first-child { font-size:19px; line-height:1; }
     .pulse-back-button:focus-visible { outline:3px solid var(--accent-primary, #4f8cff); outline-offset:3px; }
     .pulse-back-button:active { transform:scale(.98); }
-    .pulse-back-button--fallback {
-      position:fixed; left:max(14px,env(safe-area-inset-left));
-      top:max(12px,env(safe-area-inset-top)); z-index:900;
-    }
-    @media (max-width:767px) {
-      .pulse-back-button { min-height:40px; }
-    }
+    @media (max-width:767px) { .pulse-back-button { min-height:40px; } }
   `;
   document.head.appendChild(style);
 
-  // Prefer the page's own title area so Back never covers the menu or status bar.
-  const titleArea = document.querySelector(".header-bar .welcome-title, .standalone-wrap .welcome-title");
-  if (titleArea) {
-    titleArea.insertBefore(button, titleArea.firstChild);
-  } else {
-    button.classList.add("pulse-back-button--fallback");
-    document.body.appendChild(button);
-  }
+  // Keep the control in normal document flow, below the fixed menu and outside the logo/sidebar.
+  const content = document.querySelector("main") || document.querySelector(".standalone-wrap") || document.body;
+  content.insertBefore(button, content.firstChild);
 })();
