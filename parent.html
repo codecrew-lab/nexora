@@ -65,9 +65,9 @@
       <button class="btn" id="themeToggle">Theme</button>
     </div>
 
-    <div class="card parent-access-card" style="margin-bottom: 20px;">
+    <div class="card parent-access-card" id="parentAccessCard" style="margin-bottom: 20px;">
       <h3>🔑 Enter Your Child's Student Code</h3>
-      <p style="font-size:0.85rem; color:var(--text-secondary); margin: 6px 0 12px;">Use the access code issued by your child's teacher.</p>
+      <p style="font-size:0.85rem; color:var(--text-secondary); margin: 6px 0 12px;">Use the access code issued by your child's teacher. This device can remember your selected student for up to 7 days.</p>
       <div class="parent-access-form">
         <input type="text" id="parentCodeInput" class="input-field" placeholder="e.g. CLASS8A-4921" style="text-transform:uppercase;">
         <button class="btn" onclick="loadParentView()">View Report</button>
@@ -79,6 +79,11 @@
         <span class="parent-hero-label">PARENT OVERVIEW</span>
         <h2 id="pStudentName">Student Name</h2>
         <p id="pStudentClass">Class &bull; Code</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <button class="btn" type="button" id="parentSwitchStudent">Switch student</button>
+          <button class="btn" type="button" id="parentSignOut" style="background:transparent;border:1px solid var(--border-color);color:var(--text-primary);">Sign out</button>
+        </div>
+        <p id="parentSessionExpiry" style="font-size:.78rem;color:var(--text-secondary);margin:9px 0 0;">Access remembered for up to 7 days on this device.</p>
       </section>
 
       <div class="parent-metric-grid" aria-label="Progress summary">
@@ -128,10 +133,46 @@
       localStorage.setItem('auraway_theme', next);
     });
 
-    async function loadParentView() {
+    const PARENT_SESSION_KEY = 'pulse_parent_remembered_student_v1';
+    const PARENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+    function rememberParentStudent(code) {
+      try {
+        const existing = JSON.parse(localStorage.getItem(PARENT_SESSION_KEY) || 'null');
+        const expiresAt = existing && Number(existing.expiresAt) > Date.now()
+          ? Number(existing.expiresAt)
+          : Date.now() + PARENT_SESSION_TTL_MS;
+        localStorage.setItem(PARENT_SESSION_KEY, JSON.stringify({ studentCode: code, expiresAt }));
+        const expiry = new Date(expiresAt);
+        document.getElementById('parentSessionExpiry').textContent =
+          'Remembered on this device until ' + expiry.toLocaleString() + '.';
+      } catch (_) {
+        document.getElementById('parentSessionExpiry').textContent =
+          'This browser could not save the 7-day remembered access.';
+      }
+    }
+
+    function showParentCodeEntry() {
+      document.getElementById('parentAccessCard').style.display = 'block';
+      document.getElementById('parentReportCard').style.display = 'none';
       const input = document.getElementById('parentCodeInput');
-      const code = input.value.trim().toUpperCase();
+      input.value = '';
+      input.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function parentSignOut() {
+      try { localStorage.removeItem(PARENT_SESSION_KEY); } catch (_) {}
+      showParentCodeEntry();
+      document.getElementById('parentSessionExpiry').textContent =
+        'You have signed out. Enter a student code to continue.';
+    }
+
+    async function loadParentView(codeOverride) {
+      const input = document.getElementById('parentCodeInput');
+      const code = String(codeOverride || input.value).trim().toUpperCase();
       if (!code) return alert('Please enter your child’s student code.');
+      input.value = code;
 
       const button = document.querySelector('.parent-access-form button');
       const originalLabel = button.textContent;
@@ -245,6 +286,8 @@
           });
         }
 
+        rememberParentStudent(code);
+        document.getElementById('parentAccessCard').style.display = 'none';
         document.getElementById('parentReportCard').style.display = 'block';
       } catch (error) {
         console.error('Parent report lookup failed:', error);
@@ -253,6 +296,23 @@
         button.disabled = false;
         button.textContent = originalLabel;
       }
+    }
+
+    document.getElementById('parentSwitchStudent').addEventListener('click', showParentCodeEntry);
+    document.getElementById('parentSignOut').addEventListener('click', parentSignOut);
+
+    // Restore the last selected student only while the original fixed 7-day window is valid.
+    try {
+      const remembered = JSON.parse(localStorage.getItem(PARENT_SESSION_KEY) || 'null');
+      if (remembered && typeof remembered.studentCode === 'string' &&
+          Number.isFinite(Number(remembered.expiresAt)) && Number(remembered.expiresAt) > Date.now()) {
+        document.getElementById('parentCodeInput').value = remembered.studentCode;
+        loadParentView(remembered.studentCode);
+      } else if (remembered) {
+        localStorage.removeItem(PARENT_SESSION_KEY);
+      }
+    } catch (_) {
+      try { localStorage.removeItem(PARENT_SESSION_KEY); } catch (_) {}
     }
   </script>
 </body>
