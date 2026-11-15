@@ -147,6 +147,38 @@
         </div>
       </div>
 
+      <section class="card" id="assignmentProgressSection" aria-labelledby="assignmentProgressTitle" style="margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div>
+            <h2 id="assignmentProgressTitle" style="font-size:1.08rem;margin:0;">☁️ Cloud Assignment Progress</h2>
+            <p id="cloudAssignmentMessage" style="color:var(--text-secondary);font-size:.84rem;margin:5px 0 0;">Loading your latest classroom assignments…</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn" id="refreshCloudAssignments" style="padding:8px 12px;">Refresh</button>
+            <a class="btn" href="classroom.html" style="text-decoration:none;padding:8px 12px;">Open Classroom →</a>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:16px;">
+          <div class="snapshot-item"><span class="snapshot-label">Total</span><strong class="snapshot-value" id="cloudAssignmentTotal">—</strong></div>
+          <div class="snapshot-item"><span class="snapshot-label">Completed</span><strong class="snapshot-value" id="cloudAssignmentCompleted">—</strong></div>
+          <div class="snapshot-item"><span class="snapshot-label">Pending</span><strong class="snapshot-value" id="cloudAssignmentPending">—</strong></div>
+        </div>
+        <div style="margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:.86rem;">
+            <strong>Overall completion</strong><strong id="cloudAssignmentPercent">—</strong>
+          </div>
+          <div role="progressbar" aria-label="Cloud assignment completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="cloudAssignmentProgressBar" style="height:10px;border-radius:999px;background:var(--border-color);overflow:hidden;">
+            <div id="cloudAssignmentProgressFill" style="height:100%;width:0%;border-radius:inherit;background:var(--accent-primary);transition:width .25s ease;"></div>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <h3 style="font-size:.95rem;margin-bottom:8px;">Recent assignments</h3>
+          <ul id="cloudAssignmentList" style="list-style:none;display:grid;gap:8px;margin:0;padding:0;">
+            <li style="color:var(--text-secondary);font-size:.86rem;">Waiting for your secure student sign-in…</li>
+          </ul>
+        </div>
+      </section>
+
       <div class="card" id="examCountdownSection" style="margin-bottom: 24px;">
         <h3>Next Exam 🎯</h3>
         <p id="dashExamName" style="font-weight: 700; margin-top: 8px;">No upcoming exams scheduled</p>
@@ -178,6 +210,7 @@
         <p style="color: var(--text-secondary); font-size: .85rem; margin: 8px 0 12px;">Choose which sections appear on your dashboard. Your choices are saved on this device.</p>
         <div style="display: grid; gap: 10px;">
           <label><input type="checkbox" data-dashboard-section="statsSection" checked> Show overview and study streak</label>
+          <label><input type="checkbox" data-dashboard-section="assignmentProgressSection" checked> Show cloud assignment progress</label>
           <label><input type="checkbox" data-dashboard-section="examCountdownSection" checked> Show next exam countdown</label>
           <label><input type="checkbox" data-dashboard-section="tasksQuickSection" checked> Show tasks and quick actions</label>
         </div>
@@ -250,9 +283,6 @@
     // Load Real Data from LocalStorage
     const tasks = JSON.parse(localStorage.getItem('auraway_tasks')) || [];
     const focusStats = JSON.parse(localStorage.getItem('auraway_focus_stats')) || { totalMinutes: 0, sessions: 0 };
-    const assignments = JSON.parse(localStorage.getItem('auraway_assignments')) || [];
-    const waterCups = parseInt(localStorage.getItem('auraway_water')) || 0;
-
     // 1. Task Progress
     const completedTasks = tasks.filter(t => t.completed).length;
     const pct = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
@@ -263,10 +293,116 @@
     document.getElementById('dashFocusTime').textContent = `${focusStats.totalMinutes} mins`;
     document.getElementById('dashFocusSub').textContent = `${focusStats.sessions} sessions completed`;
 
-    // 3. Pending Assignments & Wellness
-    const pendingAssign = assignments.filter(a => a.status !== 'Submitted').length;
-    document.getElementById('dashPendingAssign').textContent = `${pendingAssign} Due`;
-    document.getElementById('dashHydrationSub').textContent = `Hydration: ${waterCups}/8 cups today`;
+    // Cloud assignment totals are filled from Supabase after secure student authentication.
+    document.getElementById('dashPendingAssign').textContent = 'Loading…';
+    document.getElementById('dashHydrationSub').textContent = 'Syncing cloud assignments…';
+
+    // Cloud assignment progress is loaded only after student-auth.js verifies the Supabase session.
+    async function loadCloudAssignmentProgress(profile) {
+      const message = document.getElementById('cloudAssignmentMessage');
+      const list = document.getElementById('cloudAssignmentList');
+      const refresh = document.getElementById('refreshCloudAssignments');
+      if (!profile?.student_code || !supabaseClient) {
+        message.textContent = 'Sign in to view your cloud assignment progress.';
+        list.textContent = 'Your assignment records will appear here after sign-in.';
+        return;
+      }
+
+      message.textContent = 'Syncing with your classroom…';
+      refresh.disabled = true;
+      try {
+        const code = profile.student_code;
+        const [{ data: assignmentRows, error: assignmentError }, { data: updateRows, error: updateError }] = await Promise.all([
+          supabaseClient.from('assignments')
+            .select('id,title,subject,due_date,target_code')
+            .order('due_date', { ascending: true }),
+          supabaseClient.from('student_updates')
+            .select('assignment_id,status,updated_at')
+            .eq('student_code', code)
+            .order('updated_at', { ascending: false })
+        ]);
+        if (assignmentError || updateError) throw assignmentError || updateError;
+
+        const assigned = (assignmentRows || []).filter(item =>
+          item.target_code === 'ALL' ||
+          item.target_code === code ||
+          (profile.class_name && item.target_code === 'CLASS:' + profile.class_name)
+        );
+        const latestStatus = new Map();
+        (updateRows || []).forEach(update => {
+          if (!latestStatus.has(update.assignment_id)) latestStatus.set(update.assignment_id, update.status);
+        });
+
+        const completed = assigned.filter(item => latestStatus.get(item.id) === 'Completed').length;
+        const pending = assigned.length - completed;
+        const percent = assigned.length ? Math.round((completed / assigned.length) * 100) : 0;
+        document.getElementById('cloudAssignmentTotal').textContent = String(assigned.length);
+        document.getElementById('cloudAssignmentCompleted').textContent = String(completed);
+        document.getElementById('cloudAssignmentPending').textContent = String(pending);
+        document.getElementById('cloudAssignmentPercent').textContent = percent + '%';
+        document.getElementById('cloudAssignmentProgressBar').setAttribute('aria-valuenow', String(percent));
+        document.getElementById('cloudAssignmentProgressFill').style.width = percent + '%';
+        document.getElementById('dashPendingAssign').textContent = pending + ' Due';
+        document.getElementById('dashHydrationSub').textContent = completed + ' of ' + assigned.length + ' cloud assignments completed';
+        message.textContent = assigned.length
+          ? 'Live progress from your teacher-published classroom assignments.'
+          : 'No cloud assignments have been published for your account or class yet.';
+
+        list.replaceChildren();
+        if (!assigned.length) {
+          const empty = document.createElement('li');
+          empty.style.cssText = 'color:var(--text-secondary);font-size:.86rem;padding:10px 0;';
+          empty.textContent = 'You’re all caught up — no assignments yet.';
+          list.append(empty);
+          return;
+        }
+
+        assigned.slice(0, 4).forEach(item => {
+          const done = latestStatus.get(item.id) === 'Completed';
+          const row = document.createElement('li');
+          row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border-color);border-radius:10px;';
+          const details = document.createElement('div');
+          details.style.minWidth = '0';
+          const title = document.createElement('strong');
+          title.style.cssText = 'display:block;overflow-wrap:anywhere;font-size:.9rem;';
+          title.textContent = item.title || 'Untitled assignment';
+          const meta = document.createElement('span');
+          meta.style.cssText = 'display:block;color:var(--text-secondary);font-size:.78rem;margin-top:3px;';
+          meta.textContent = [item.subject || 'General', item.due_date ? 'Due ' + item.due_date : 'No due date'].join(' • ');
+          details.append(title, meta);
+          const status = document.createElement('span');
+          status.style.cssText = 'font-size:.78rem;font-weight:700;white-space:nowrap;color:' + (done ? '#10b981' : '#d97706');
+          status.textContent = done ? '✓ Completed' : '● Pending';
+          row.append(details, status);
+          list.append(row);
+        });
+        if (assigned.length > 4) {
+          const more = document.createElement('li');
+          more.style.cssText = 'font-size:.8rem;color:var(--text-secondary);';
+          more.textContent = '+' + (assigned.length - 4) + ' more — open Classroom to view all.';
+          list.append(more);
+        }
+      } catch (error) {
+        console.error('Cloud assignment progress could not be loaded:', error);
+        message.textContent = 'Could not sync assignment progress. Please try Refresh or open Classroom.';
+        list.textContent = 'Your cloud assignment data is safe. No local or cloud records were changed.';
+        document.getElementById('dashPendingAssign').textContent = 'Unavailable';
+        document.getElementById('dashHydrationSub').textContent = 'Cloud sync needs a retry';
+      } finally {
+        refresh.disabled = false;
+      }
+    }
+
+    document.getElementById('refreshCloudAssignments').addEventListener('click', () => {
+      if (window.PULSE_CURRENT_STUDENT) loadCloudAssignmentProgress(window.PULSE_CURRENT_STUDENT);
+    });
+    if (window.PULSE_CURRENT_STUDENT) {
+      loadCloudAssignmentProgress(window.PULSE_CURRENT_STUDENT);
+    } else {
+      window.addEventListener('pulseStudentReady', event => {
+        loadCloudAssignmentProgress(event.detail?.profile || window.PULSE_CURRENT_STUDENT);
+      }, { once: true });
+    }
 
     // Study streak from real task/focus activity dates
     function getStudyStreak() {
