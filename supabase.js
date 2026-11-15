@@ -3,8 +3,8 @@
 const SUPABASE_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sbS10vHYIrxhHsqnQNoWgA_WzREJj_-';
 
-// Keep browser sessions for 7 days. Supabase refreshes active sessions automatically;
-// each refreshed save renews this window. Signing out still removes the session immediately.
+// Enforce a fixed seven-day maximum from the successful sign-in.
+// Token refreshes must not extend this deadline. Signing out removes the session immediately.
 const PULSE_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // Keep each portal's session separate so opening the Teacher portal cannot
 // sign out the Student portal (and vice versa) in the same browser.
@@ -44,10 +44,21 @@ const pulseSessionStorage = {
   },
   setItem(key, value) {
     try {
-      window.localStorage.setItem(key, JSON.stringify({
-        value,
-        expiresAt: Date.now() + PULSE_SESSION_TTL_MS
-      }));
+      // Supabase writes the session again whenever it rotates tokens. Preserve the
+      // original deadline instead of silently turning seven days into a sliding window.
+      const previous = window.localStorage.getItem(key);
+      let expiresAt = Date.now() + PULSE_SESSION_TTL_MS;
+      if (previous) {
+        try {
+          const parsed = JSON.parse(previous);
+          if (parsed && typeof parsed.expiresAt === 'number' && parsed.expiresAt > Date.now()) {
+            expiresAt = parsed.expiresAt;
+          }
+        } catch (_) {
+          // A legacy, unwrapped session starts its seven-day window on this save.
+        }
+      }
+      window.localStorage.setItem(key, JSON.stringify({ value, expiresAt }));
     } catch (_) {
       // If browser storage is unavailable, Supabase will report an auth/storage issue.
     }
