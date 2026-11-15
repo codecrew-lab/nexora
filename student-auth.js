@@ -110,7 +110,7 @@ async function pulseInitializeStudentAuth() {
   localStorage.setItem("auraway_student_code", profile.student_code);
   localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
   window.PULSE_CURRENT_STUDENT = profile;
-  pulseAddStudentAccountControls();
+  pulseAddStudentAccountControls();\n  pulseLoadSiblingAccounts();
   window.dispatchEvent(new CustomEvent("pulseStudentReady", { detail: { profile } }));
 }
 
