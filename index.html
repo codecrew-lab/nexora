@@ -124,6 +124,14 @@
         </div>
       </section>
 
+      <section class="card" id="pulseSiblingAccounts" aria-labelledby="pulseSiblingHeading" style="margin:16px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div><h2 id="pulseSiblingHeading" style="font-size:1.05rem;margin:0;">👨‍👩‍👧 My Siblings</h2><p style="color:var(--text-secondary);font-size:.82rem;margin:4px 0 0;">Teacher-approved linked student accounts. Your school data stays separate.</p></div>
+          <button type="button" class="btn" onclick="pulseLoadSiblingAccounts()">Refresh</button>
+        </div>
+        <div data-sibling-list style="display:grid;gap:8px;margin-top:12px;">Loading linked accounts…</div>
+      </section>
+
       <!-- Real Live Stats Grid -->
       <div class="grid-cards" id="statsSection">
         <div class="card">
