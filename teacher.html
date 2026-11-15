@@ -1113,7 +1113,7 @@
     if(sessionData?.session?.user?.email?.toLowerCase()!=='teacher@auraway.app'){
       message('Authorised teacher sign-in required.',true);return;
     }
-    const {data:students,error}=await supabaseClient.from('students').select('id,student_name,class_name').order('class_name').order('student_name');
+    const {data:students,error}=await supabaseClient.from('students').select('id,student_name,class_name').not('auth_user_id','is',null).order('class_name').order('student_name');
     if(error){message('Could not load student list.',true);return;}
     [a,b].forEach(select=>{students.forEach(st=>{const option=document.createElement('option');option.value=st.id;option.textContent=st.student_name+' — '+st.class_name;select.append(option)})});
     await loadLinks();
