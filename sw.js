@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pulse-pwa-v5';
+const CACHE_NAME = 'pulse-pwa-v6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -29,38 +29,74 @@ const ASSETS_TO_CACHE = [
   './pwa-icon.svg'
 ];
 
-self.addEventListener('install', (event) => {
+// Only these same-origin app files may be stored for offline use.
+// Supabase/Auth/API requests are deliberately excluded.
+const STATIC_ASSET_PATHS = new Set(
+  ASSETS_TO_CACHE.map(path => new URL(path, self.registration.scope).pathname)
+);
+
+self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(ASSETS_TO_CACHE))
       .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const requestUrl = new URL(request.url);
+  const scopeUrl = new URL(self.registration.scope);
+
+  // Never intercept external services such as Supabase or third-party CDNs.
+  if (requestUrl.origin !== scopeUrl.origin) return;
+
+  const isNavigation = request.mode === 'navigate';
+  const isStaticAsset = STATIC_ASSET_PATHS.has(requestUrl.pathname);
+
+  // Do not cache same-origin API endpoints or arbitrary dynamic responses.
+  if (!isNavigation && !isStaticAsset) return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.open(CACHE_NAME).then(async cache => {
+      const cachedResponse = await cache.match(request);
+      const networkRequest = fetch(request).then(response => {
+        if (response && response.ok && response.type === 'basic') {
+          cache.put(request, response.clone());
+        }
+        return response;
+      });
+
       if (cachedResponse) {
-        const refresh = fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
-          }
-        }).catch(() => {});
+        // Refresh static content in the background; never cache private API data.
+        networkRequest.catch(() => {});
         return cachedResponse;
       }
-      return fetch(event.request).catch(() => {
-        if (event.request.mode === 'navigate') return caches.match('./portals.html');
-        throw new Error('PULSE is offline and this page is not cached.');
-      });
+
+      try {
+        return await networkRequest;
+      } catch (error) {
+        if (isNavigation) {
+          const offlinePage = await cache.match(new URL('./portals.html', scopeUrl).href);
+          if (offlinePage) return offlinePage;
+        }
+        return new Response('PULSE is offline. This page is not available in the offline cache.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+      }
     })
   );
 });
