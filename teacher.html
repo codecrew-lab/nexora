@@ -1102,9 +1102,11 @@
 
 <script>
 (function(){
-  const el=id=>document.getElementById(id);\n  let started=false;
+  const el=id=>document.getElementById(id);
+  let started=false;
   const message=(value,bad=false)=>{const node=el('siblingManagerMessage');if(node){node.textContent=value;node.style.color=bad?'#ef4444':'var(--text-secondary)'}};
-  async function initSiblingManager(){\n    if(started)return;started=true;
+  async function initSiblingManager(){
+    if(started)return;started=true;
     const a=el('siblingStudentA'),b=el('siblingStudentB');
     if(!a||!b||typeof supabaseClient==='undefined'||!supabaseClient)return;
     const {data:sessionData}=await supabaseClient.auth.getSession();
