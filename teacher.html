@@ -169,6 +169,18 @@
 
     </div>
 
+    <section class="card" id="teacherSiblingManager" style="margin:0 0 20px;">
+      <h3>👨‍👩‍👧 Verified Sibling Accounts</h3>
+      <p style="color:var(--text-secondary);font-size:.85rem;">Only an authorised teacher can create or remove links. Students cannot link accounts themselves.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0;">
+        <select id="siblingStudentA" class="input-field"><option value="">Choose first student</option></select>
+        <select id="siblingStudentB" class="input-field"><option value="">Choose sibling</option></select>
+        <button type="button" class="btn" id="saveSiblingLink">＋ Verify & link</button>
+      </div>
+      <p id="siblingManagerMessage" role="status" style="font-size:.85rem;color:var(--text-secondary);"></p>
+      <div id="siblingLinksList" style="display:grid;gap:8px;"><p style="color:var(--text-secondary);">Loading verified links…</p></div>
+    </section>
+
     <section id="teacherTimetableManager" class="card" style="margin:0 0 20px;" aria-labelledby="teacherTimetableHeading">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
         <div><h3 id="teacherTimetableHeading">🗓️ Shared School Timetable</h3><p style="color:var(--text-secondary);font-size:.85rem;margin:4px 0 12px;">Only the teacher account can publish or change periods. Students and parents get read-only access.</p></div>
@@ -1094,7 +1106,7 @@
   const message=(value,bad=false)=>{el('siblingManagerMessage').textContent=value;el('siblingManagerMessage').style.color=bad?'#ef4444':'var(--text-secondary)'};
   async function initSiblingManager(){
     const a=el('siblingStudentA'),b=el('siblingStudentB');
-    if(!a||!b||!window.supabaseClient)return;
+    if(!a||!b||typeof supabaseClient==='undefined'||!supabaseClient)return;
     const {data:sessionData}=await supabaseClient.auth.getSession();
     if(sessionData?.session?.user?.email?.toLowerCase()!=='teacher@auraway.app'){
       message('Authorised teacher sign-in required.',true);return;
