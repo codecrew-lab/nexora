@@ -67,7 +67,16 @@ sidebar {
   background:linear-gradient(100deg,#c4b5fd 0%,#818cf8 52%,#67e8f9 100%);
   background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
-.nav-links { list-style:none; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; padding:0; margin:0; }
+.nav-links {
+  list-style:none; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; padding:0; margin:0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+.nav-links::-webkit-scrollbar { width: 5px; }
+.nav-links::-webkit-scrollbar-track { background: transparent; }
+.nav-links::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.nav-links::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 .nav-links a {
   display:flex; align-items:center; gap:11px; min-height:44px; padding:10px 13px;
   color:var(--text-secondary); text-decoration:none; font-size:.94rem; font-weight:550;
@@ -307,7 +316,17 @@ sidebar#aurawaySidebar { transition:transform .24s ease; }
 .pulse-student-portal .student-nav-tools{margin:0 0 20px}
 .pulse-student-portal .student-nav-search-label{display:block;margin:0 5px 8px;color:var(--text-secondary);font-size:.68rem;font-weight:750;letter-spacing:.13em;text-transform:uppercase}
 .pulse-student-portal .student-nav-search{width:100%;min-height:46px;padding:11px 14px;border-radius:12px;color:var(--text-primary);background:var(--bg-primary);border:1px solid var(--border-color)}
-.pulse-student-portal .student-nav-groups{display:flex;flex-direction:column;gap:20px;flex:1;min-height:0}
+.pulse-student-portal .student-nav-groups{
+  display:flex;flex-direction:column;gap:20px;flex:1;min-height:0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+  padding-right: 4px;
+}
+.pulse-student-portal .student-nav-groups::-webkit-scrollbar { width: 5px; }
+.pulse-student-portal .student-nav-groups::-webkit-scrollbar-track { background: transparent; }
+.pulse-student-portal .student-nav-groups::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.pulse-student-portal .student-nav-groups::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 .pulse-student-portal .student-nav-section{min-width:0}
 .pulse-student-portal .student-nav-section[hidden],.pulse-student-portal .student-nav-section li[hidden]{display:none!important}
 .pulse-student-portal .student-nav-section h2{margin:0 8px 8px;color:var(--text-secondary);font-size:.67rem;font-weight:800;letter-spacing:.14em}
