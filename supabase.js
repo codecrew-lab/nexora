@@ -68,6 +68,20 @@ const pulseSessionStorage = {
   }
 };
 
+function pulseResetSessionDeadline() {
+  try {
+    const raw = window.localStorage.getItem(PULSE_AUTH_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.value === "string") {
+      window.localStorage.setItem(PULSE_AUTH_STORAGE_KEY, JSON.stringify({
+        value: parsed.value,
+        expiresAt: Date.now() + PULSE_SESSION_TTL_MS
+      }));
+    }
+  } catch (_) {}
+}
+
 const supabaseClient = (window.supabase?.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
