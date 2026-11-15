@@ -70,6 +70,7 @@ async function pulseStudentSignIn(event) {
     return;
   }
 
+  if (typeof pulseResetSessionDeadline === "function") pulseResetSessionDeadline();
   localStorage.setItem("auraway_student_code", profile.student_code);
   localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
   window.location.reload();
@@ -111,6 +112,7 @@ async function pulseInitializeStudentAuth() {
   localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
   window.PULSE_CURRENT_STUDENT = profile;
   pulseAddStudentAccountControls();
+  pulseInitSiblingLinkForm();
   pulseLoadSiblingAccounts();
   window.dispatchEvent(new CustomEvent("pulseStudentReady", { detail: { profile } }));
 }
@@ -122,33 +124,121 @@ function pulseAddStudentAccountControls() {
   wrap.id = "pulseStudentAccountControls";
   wrap.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
   const siblingsButton = document.createElement("button");
-  siblingsButton.type = "button"; siblingsButton.className = "btn"; siblingsButton.textContent = "My Siblings";
-  siblingsButton.addEventListener("click", () => document.getElementById("pulseSiblingAccounts")?.scrollIntoView({behavior:"smooth",block:"center"}));
-  const signOutButton = document.createElement("button");
-  signOutButton.type = "button"; signOutButton.className = "btn"; signOutButton.textContent = "Sign out";
-  signOutButton.addEventListener("click", studentLogout);
-  wrap.append(siblingsButton, signOutButton); header.appendChild(wrap);
+  siblingsButton.type = "button";
+  siblingsButton.className = "btn";
+  siblingsButton.textContent = "My Siblings";
+  siblingsButton.addEventListener("click", () => document.getElementById("pulseSiblingAccounts")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn";
+  button.textContent = "Sign out";
+  button.addEventListener("click", studentLogout);
+  wrap.append(siblingsButton, button);
+  header.appendChild(wrap);
 }
+
+
 async function pulseLoadSiblingAccounts() {
-  const section=document.getElementById("pulseSiblingAccounts");
-  if(!section||!supabaseClient)return;
-  const list=section.querySelector("[data-sibling-list]");
-  if(!list)return;
-  list.textContent="Loading linked accounts…";
-  const {data,error}=await supabaseClient.rpc("pulse_get_my_siblings");
-  if(error){list.textContent="Sibling accounts are temporarily unavailable.";return;}
-  if(!data?.length){list.textContent="No sibling accounts have been linked by your teacher yet.";return;}
+  const section = document.getElementById("pulseSiblingAccounts");
+  if (!section || !supabaseClient) return;
+  const list = section.querySelector("[data-sibling-list]");
+  if (!list) return;
+  list.textContent = "Loading linked accounts…";
+  const { data, error } = await supabaseClient.rpc("pulse_get_my_siblings");
+  if (error) { list.textContent = "Sibling accounts are temporarily unavailable."; return; }
+  if (!data?.length) {
+    list.textContent = "No sibling accounts linked yet. Use the form above to add one.";
+    return;
+  }
   list.replaceChildren();
-  data.forEach(sibling=>{
-    const card=document.createElement("article");
-    card.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-card);";
-    const info=document.createElement("div"),name=document.createElement("strong"),klass=document.createElement("p");
-    name.textContent=sibling.student_name||"Student";klass.textContent=sibling.class_name||"Class not set";
-    klass.style.cssText="margin:4px 0 0;color:var(--text-secondary);font-size:.85rem;";
-    info.append(name,klass);
-    const button=document.createElement("button");button.type="button";button.className="btn";button.textContent="Switch account";
-    button.addEventListener("click",()=>pulseOpenSiblingSwitch(sibling));
-    card.append(info,button);list.append(card);
+  data.forEach(sibling => {
+    const card = document.createElement("article");
+    card.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-card);";
+    const info = document.createElement("div");
+    const name = document.createElement("strong");
+    const klass = document.createElement("p");
+    name.textContent = sibling.student_name || "Student";
+    klass.textContent = sibling.class_name || "Class not set";
+    klass.style.cssText = "margin:4px 0 0;color:var(--text-secondary);font-size:.85rem;";
+    info.append(name, klass);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn";
+    button.textContent = "Switch account";
+    button.addEventListener("click", () => pulseOpenSiblingSwitch(sibling));
+    card.append(info, button);
+    list.append(card);
+  });
+}
+
+async function pulseFinishSiblingAuthentication(code, password, targetId, requestId, panel) {
+  const message = panel.querySelector("[data-switch-message]");
+  const submit = panel.querySelector('button[type="submit"]');
+  const { data: signedIn, error: signInError } = await supabaseClient.auth.signInWithPassword({
+    email: pulseStudentEmail(code),
+    password
+  });
+  if (signInError || !signedIn?.user) {
+    message.textContent = "Sign-in failed. Check the student code and password.";
+    panel.elements.password.value = "";
+    submit.disabled = false;
+    return;
+  }
+  if (requestId) {
+    const { error: approvalError } = await supabaseClient.rpc("pulse_approve_sibling_link_request", {
+      p_request_id: requestId
+    });
+    if (approvalError) {
+      await supabaseClient.auth.signOut();
+      localStorage.removeItem("auraway_student_code");
+      localStorage.removeItem("auraway_student_profile");
+      pulseShowLogin("Sibling verification could not be completed. Please sign in again.");
+      return;
+    }
+  }
+  const { data: profile, error: profileError } = await supabaseClient
+    .from("students")
+    .select("id,student_name,class_name,student_code,study_hours,attendance_pct,teacher_request,areas_to_improve")
+    .eq("auth_user_id", signedIn.user.id)
+    .maybeSingle();
+  if (profileError || !profile || (targetId && Number(profile.id) !== Number(targetId))) {
+    await supabaseClient.auth.signOut();
+    localStorage.removeItem("auraway_student_code");
+    localStorage.removeItem("auraway_student_profile");
+    pulseShowLogin("The account could not be verified. Please sign in again.");
+    return;
+  }
+  if (typeof pulseResetSessionDeadline === "function") pulseResetSessionDeadline();
+  localStorage.setItem("auraway_student_code", profile.student_code);
+  localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
+  window.location.reload();
+}
+
+function pulseInitSiblingLinkForm() {
+  const section = document.getElementById("pulseSiblingAccounts");
+  const panel = section?.querySelector("[data-sibling-link-form]");
+  if (!panel || panel.dataset.bound === "true") return;
+  panel.dataset.bound = "true";
+  panel.addEventListener("submit", async event => {
+    event.preventDefault();
+    const code = String(panel.elements.code.value || "").trim().toUpperCase();
+    const password = panel.elements.password.value;
+    const message = panel.querySelector("[data-switch-message]");
+    const submit = panel.querySelector('button[type="submit"]');
+    if (!code || !password) return;
+    submit.disabled = true;
+    message.textContent = "Verifying the sibling account…";
+    const { data: requestId, error: requestError } = await supabaseClient.rpc("pulse_request_sibling_link", {
+      p_sibling_code: code
+    });
+    if (requestError || !requestId) {
+      message.textContent = requestError?.message?.includes("already linked")
+        ? "These accounts are already linked. Use Switch account below."
+        : "Could not start verification. Check the sibling code and try again.";
+      submit.disabled = false;
+      return;
+    }
+    await pulseFinishSiblingAuthentication(code, password, null, requestId, panel);
   });
 }
 
@@ -160,28 +250,45 @@ function pulseOpenSiblingSwitch(sibling) {
     panel = document.createElement("form");
     panel.dataset.siblingSwitch = "true";
     panel.style.cssText = "display:grid;gap:10px;margin-top:14px;padding:14px;border:1px solid var(--border-color);border-radius:12px;";
-    panel.innerHTML = '<strong></strong><label>Student code<input name="code" required autocomplete="username" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label><label>Password<input name="password" type="password" required autocomplete="current-password" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label><p data-switch-message role="status" style="margin:0;color:var(--text-secondary);font-size:.85rem;"></p><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" type="submit">Verify & switch</button><button class="btn" type="button" data-switch-cancel>Cancel</button></div>';
+    panel.innerHTML = '<strong></strong><label>Sibling student code<input name="code" required autocomplete="username" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label><label>Sibling password<input name="password" type="password" required autocomplete="current-password" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label><p data-switch-message role="status" style="margin:0;color:var(--text-secondary);font-size:.85rem;"></p><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" type="submit">Verify & switch</button><button class="btn" type="button" data-switch-cancel>Cancel</button></div>';
     panel.addEventListener("submit", async event => {
       event.preventDefault();
-      const targetId=Number(panel.dataset.targetStudentId),code=String(panel.elements.code.value||"").trim().toUpperCase(),password=panel.elements.password.value;
-      const message=panel.querySelector("[data-switch-message]"),submit=panel.querySelector('button[type="submit"]');
-      if(!code||!password)return; submit.disabled=true; message.textContent="Verifying linked account…";
-      const {data:allowed,error:verifyError}=await supabaseClient.rpc("pulse_is_linked_sibling_code",{p_student_code:code});
-      if(verifyError||allowed!==true){message.textContent="That code is not linked to your account. Ask your teacher to verify the link.";submit.disabled=false;return;}
-      const {data:signedIn,error:signInError}=await supabaseClient.auth.signInWithPassword({email:pulseStudentEmail(code),password});
-      if(signInError||!signedIn?.user){message.textContent="Sign-in failed. Check the sibling code and password.";panel.elements.password.value="";submit.disabled=false;return;}
-      const {data:profile,error:profileError}=await supabaseClient.from("students").select("id,student_name,class_name,student_code,study_hours,attendance_pct,teacher_request,areas_to_improve").eq("auth_user_id",signedIn.user.id).maybeSingle();
-      if(profileError||!profile||Number(profile.id)!==targetId){await supabaseClient.auth.signOut();localStorage.removeItem("auraway_student_code");localStorage.removeItem("auraway_student_profile");message.textContent="The account could not be verified. Please sign in again.";submit.disabled=false;return;}
-      if(typeof pulseResetSessionDeadline==="function")pulseResetSessionDeadline();
-      localStorage.setItem("auraway_student_code",profile.student_code);localStorage.setItem("auraway_student_profile",JSON.stringify(profile));window.location.reload();
+      const code = String(panel.elements.code.value || "").trim().toUpperCase();
+      const password = panel.elements.password.value;
+      const submit = panel.querySelector('button[type="submit"]');
+      if (!code || !password) return;
+      submit.disabled = true;
+      panel.querySelector("[data-switch-message]").textContent = "Checking linked account…";
+      const { data: allowed, error: verifyError } = await supabaseClient.rpc("pulse_is_linked_sibling_code", {
+        p_student_code: code
+      });
+      if (verifyError || allowed !== true) {
+        panel.querySelector("[data-switch-message]").textContent = "This account is not linked yet. Use Add a sibling first.";
+        submit.disabled = false;
+        return;
+      }
+      await pulseFinishSiblingAuthentication(code, password, panel.dataset.targetStudentId, null, panel);
     });
-    panel.querySelector("[data-switch-cancel]").addEventListener("click",()=>{panel.reset();panel.remove();});
+    panel.querySelector("[data-switch-cancel]").addEventListener("click", () => {
+      panel.reset();
+      panel.remove();
+    });
     section.append(panel);
   }
-  panel.dataset.targetStudentId=String(sibling.student_id);
-  panel.querySelector("strong").textContent="Switch to "+(sibling.student_name||"sibling");
-  panel.elements.code.value="";panel.elements.password.value="";
-  panel.querySelector("[data-switch-message]").textContent="Enter the credentials for this linked student account.";
-  panel.scrollIntoView({behavior:"smooth",block:"center"});panel.elements.code.focus();
+  panel.dataset.targetStudentId = String(sibling.student_id);
+  panel.querySelector("strong").textContent = "Switch to " + (sibling.student_name || "sibling");
+  panel.elements.code.value = "";
+  panel.elements.password.value = "";
+  panel.querySelector("[data-switch-message]").textContent = "Enter this linked sibling's credentials to switch accounts.";
+  panel.scrollIntoView({ behavior: "smooth", block: "center" });
+  panel.elements.code.focus();
 }
 
+async function studentLogout() {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+  localStorage.removeItem("auraway_student_code");
+  localStorage.removeItem("auraway_student_profile");
+  pulseShowLogin("You have signed out.");
+}
+
+document.addEventListener("DOMContentLoaded", pulseInitializeStudentAuth, { once: true });
