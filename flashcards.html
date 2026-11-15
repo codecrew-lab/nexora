@@ -191,4 +191,5 @@
     document.getElementById('flashcardForm').addEventListener('submit',e=>{e.preventDefault();cards.unshift({id:Date.now(),subject:document.getElementById('flashcardSubject').value,front:document.getElementById('flashcardFront').value.trim(),back:document.getElementById('flashcardBack').value.trim(),mastered:false});e.target.reset();index=0;save()});
     filter.addEventListener('change',()=>{index=0;flipped=false;renderCard()});renderDeck();renderCard();
   </script>  <script src="navigation.js" defer></script>
+  <script src="back-navigation.js" defer></script>
 </body></html>
