@@ -30,10 +30,95 @@
       border: 1px solid var(--border-color);
       border-radius: var(--radius);
     }
+  
+    /* School Portals page: explicit mobile layout.
+       The shared slide-out navigation rules target #aurawaySidebar,
+       while this standalone page intentionally uses a compact top nav. */
+    @media (max-width: 767px) {
+      body.pulse-portals-page .app-container {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        overflow-x: hidden;
+      }
+      body.pulse-portals-page sidebar {
+        display: flex !important;
+        position: relative !important;
+        inset: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        flex: 0 0 auto !important;
+        padding: 12px 14px 10px !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        border-radius: 0 !important;
+        transform: none !important;
+        visibility: visible !important;
+        overflow: visible !important;
+      }
+      body.pulse-portals-page .logo-area {
+        min-width: 0;
+        margin: 0 4px 10px !important;
+      }
+      body.pulse-portals-page .nav-links {
+        display: flex !important;
+        flex-direction: row !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        flex: 0 0 auto !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        white-space: nowrap;
+      }
+      body.pulse-portals-page .nav-links li { flex: 0 0 auto !important; }
+      body.pulse-portals-page sidebar #themeToggle {
+        position: absolute !important;
+        top: 10px !important;
+        right: 12px !important;
+        margin: 0 !important;
+      }
+      body.pulse-portals-page main {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        flex: 1 1 auto !important;
+        margin: 0 !important;
+        padding: 20px 14px 30px !important;
+        overflow: visible !important;
+      }
+      body.pulse-portals-page .header-bar,
+      body.pulse-portals-page .portal-logo-header {
+        min-width: 0;
+        flex-wrap: wrap;
+      }
+      body.pulse-portals-page .portal-logo-header > div { min-width: 0; }
+      body.pulse-portals-page .portal-logo-header h2 {
+        overflow-wrap: anywhere;
+        font-size: 1.05rem !important;
+      }
+      body.pulse-portals-page .grid-cards,
+      body.pulse-portals-page .grid-cards[style] {
+        display: grid !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+      }
+      body.pulse-portals-page .card,
+      body.pulse-portals-page .card * { min-width: 0; }
+      body.pulse-portals-page .card .btn {
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+    }
   </style>
   <script src="portal-switcher.js" defer></script>
 </head>
-<body>
+<body class="pulse-portals-page">
   <div class="app-container">
     <sidebar>
       <div class="logo-area">
