@@ -43,6 +43,11 @@
     .calendar-event-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
     .calendar-event-type{font-size:.68rem;font-weight:750;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary)}
     .calendar-empty{padding:20px;text-align:center;color:var(--text-secondary);border:1px dashed var(--border-color);border-radius:12px}
+    .calendar-quick-editor .calendar-form{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}
+    .calendar-quick-editor .calendar-form label:first-of-type{grid-column:1/-1}
+    .calendar-quick-editor .calendar-form label:nth-of-type(4){grid-column:1/-1}
+    .calendar-quick-editor .calendar-form button{min-height:42px}
+    @media(max-width:560px){.calendar-quick-editor .calendar-form{grid-template-columns:1fr}.calendar-quick-editor .calendar-form label:first-of-type,.calendar-quick-editor .calendar-form label:nth-of-type(4){grid-column:auto}}
     @media(max-width:820px){.calendar-layout{grid-template-columns:1fr}}
     @media(max-width:480px){.calendar-day{min-height:62px;padding:5px 3px}.calendar-dot{font-size:.55rem}.calendar-panel,.calendar-side{padding:11px}.calendar-stats{gap:5px}.calendar-stat{padding:8px}}
   </style>
@@ -51,7 +56,7 @@
   <div class="app-container">
     <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
-    <sidebar id="aurawaySidebar" aria-label="Main navigation">
+    <sidebar id="aurawaySidebar" aria-label="Main navigation" style="visibility:hidden;">
       <div class="logo-area"><span class="logo-text">PULSE</span></div>
       <ul class="nav-links">
         <li><a href="index.html">📊 Dashboard</a></li>
@@ -74,6 +79,19 @@
           <div class="calendar-stat"><small>Working days (Mon–Fri)</small><strong id="workingCount">0</strong></div>
           <div class="calendar-stat"><small>Academic events</small><strong id="eventCount">0</strong></div>
         </div>
+        <section id="calendarManager" class="card calendar-quick-editor" style="display:none;margin-bottom:14px;">
+          <h2 id="calendarFormTitle" style="font-size:1.05rem;margin:0;">＋ Add a date</h2>
+          <p style="margin:5px 0 0;color:var(--text-secondary);font-size:.82rem;">Add a holiday, working day, school event or exam in a few seconds.</p>
+          <form id="calendarEventForm" class="calendar-form">
+            <input type="hidden" id="calendarEventId">
+            <label>What is happening?<input id="calendarEventName" maxlength="120" required placeholder="e.g. Onam Holiday"></label>
+            <label>Date<input id="calendarEventDate" type="date" required></label>
+            <label>Category<select id="calendarEventType"><option value="holiday">Holiday</option><option value="working_day">Working day</option><option value="event">School event</option><option value="exam">Examination</option></select></label>
+            <label>Note (optional)<textarea id="calendarEventDescription" rows="2" maxlength="500" placeholder="Add a short note"></textarea></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" id="calendarSaveButton" type="submit">＋ Save date</button><button class="btn" id="calendarCancelEdit" type="button" style="background:#64748b;">Clear</button></div>
+            <p id="calendarFormMessage" role="status" style="font-size:.78rem;color:var(--text-secondary);margin:0;"></p>
+          </form>
+        </section>
         <div class="calendar-layout">
           <section class="calendar-panel">
             <div class="calendar-toolbar">
@@ -91,25 +109,15 @@
             <h2 style="font-size:1.05rem;margin:0;">Selected date</h2>
             <p id="selectedDateLabel" style="color:var(--text-secondary);font-size:.82rem;margin:5px 0 12px;">Choose a date on the calendar.</p>
             <div id="selectedDateEvents"><p class="calendar-empty">No date selected.</p></div>
-            <div id="calendarManager" style="display:none;margin-top:16px;border-top:1px solid var(--border-color);padding-top:14px;">
-              <h3 id="calendarFormTitle" style="margin:0;">＋ Add calendar entry</h3>
-              <form id="calendarEventForm" class="calendar-form">
-                <input type="hidden" id="calendarEventId">
-                <label>Title<input id="calendarEventName" maxlength="120" required placeholder="e.g. Onam Holiday"></label>
-                <label>Date<input id="calendarEventDate" type="date" required></label>
-                <label>Type<select id="calendarEventType"><option value="holiday">Holiday</option><option value="working_day">Working day</option><option value="event">School event</option><option value="exam">Examination</option></select></label>
-                <label>Details (optional)<textarea id="calendarEventDescription" rows="2" maxlength="500" placeholder="Short note for students and staff"></textarea></label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" id="calendarSaveButton" type="submit">Save entry</button><button class="btn" id="calendarCancelEdit" type="button" style="background:#64748b;">Clear</button></div>
-                <p id="calendarFormMessage" role="status" style="font-size:.78rem;color:var(--text-secondary);margin:0;"></p>
-              </form>
-            </div>
-            <div id="calendarStaffTools" style="display:none;margin-top:14px;">
+
+            <details id="calendarStaffTools" style="display:none;margin-top:14px;"><summary style="cursor:pointer;font-weight:700;">Advanced · Connect student accounts</summary><div style="padding-top:10px;">
               <h3 style="font-size:.95rem;margin:0 0 7px;">Connect student accounts</h3>
               <p style="font-size:.76rem;color:var(--text-secondary);margin:0 0 8px;">Choose which unassigned student profiles belong to this school. Profiles already linked to another school are not shown.</p>
               <div id="unassignedStudentsList" style="max-height:220px;overflow:auto;"><p class="calendar-empty">Loading student list…</p></div>
               <button class="btn" id="linkStudentsButton" type="button" style="width:100%;margin-top:9px;background:#0f766e;">Link selected students</button>
               <p id="linkStudentsMessage" style="font-size:.75rem;color:var(--text-secondary);"></p>
             </div>
+            </details>
           </aside>
         </div>
         <section class="card" style="margin-top:16px;">
@@ -139,6 +147,37 @@
     let selectedDate=new Date();selectedDate.setHours(0,0,0,0);
     let calendarEvents=[],schoolContext=null;
     const $=id=>document.getElementById(id);
+    function setCalendarPortalNav(isTeacher){
+      const sidebar=$('aurawaySidebar');
+      const logo=sidebar.querySelector('.logo-text');
+      const list=sidebar.querySelector('.nav-links');
+      sidebar.style.visibility='visible';
+      if(isTeacher){
+        sidebar.setAttribute('aria-label','Teacher navigation');
+        logo.textContent='PULSE-T';
+        list.innerHTML=`
+          <li><a href="teacher.html#teacherCommandCenter">🏠 Overview</a></li>
+          <li><a href="teacher.html#teacherStudentsSection">👥 Students</a></li>
+          <li><a href="teacher.html#teacherTimetableManager">🗓️ Timetable</a></li>
+          <li><a href="teacher.html#teacherAttendanceManager">📋 Attendance</a></li>
+          <li><a href="teacher.html#teacherMarksSection">📝 Marks</a></li>
+          <li><a href="teacher.html#teacherAssignmentsSection">📚 Assignments</a></li>
+          <li><a href="teacher.html#teacherQuizManager">🧠 Quiz Manager</a></li>
+          <li><a href="calendar.html?portal=teacher" class="active" aria-current="page">🗓️ Academic Calendar</a></li>
+          <li><a href="teacher.html#teacherAnalyticsSection">📊 Analytics</a></li>`;
+      } else {
+        sidebar.setAttribute('aria-label','Student navigation');
+        logo.textContent='PULSE';
+        list.innerHTML=`
+          <li><a href="index.html">📊 Dashboard</a></li>
+          <li><a href="planner.html">📅 Study Planner</a></li>
+          <li><a href="exam.html">🎯 Exams</a></li>
+          <li><a href="quiz.html">🧠 Daily Quiz</a></li>
+          <li><a href="calendar.html" class="active" aria-current="page">🗓️ Academic Calendar</a></li>
+          <li><a href="classroom.html">🎓 Classroom</a></li>`;
+      }
+    }
+
     const typeLabels={holiday:'Holiday',working_day:'Working day',event:'School event',exam:'Examination'};
     function isoDate(date){return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');}
     function prettyDate(value){return new Date(value+'T00:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
@@ -275,16 +314,32 @@
     async function initialiseCalendar(){
       if(!supabaseClient){$('calendarNotice').textContent='Supabase is not configured.';return;}
       const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
-      if(sessionError||!sessionData.session){$('calendarNotice').textContent='Please sign in to view your school calendar.';return;}
+      if(sessionError||!sessionData.session){
+        $('menuToggle').style.display='none';
+        $('aurawaySidebar').style.display='none';
+        $('menuBackdrop').style.display='none';
+        $('calendarNotice').textContent='Please sign in to view your school calendar.';
+        return;
+      }
       const {data,error}=await supabaseClient.rpc('pulse_calendar_my_context');
-      if(error){$('calendarNotice').textContent='Could not check school access: '+error.message;return;}
+      if(error){
+        $('menuToggle').style.display='none';
+        $('aurawaySidebar').style.display='none';
+        $('menuBackdrop').style.display='none';
+        $('calendarNotice').textContent='Could not check school access: '+error.message;
+        return;
+      }
       schoolContext=Array.isArray(data)&&data.length?data[0]:null;
+      const email=sessionData.session.user.email?.toLowerCase();
+      const appRole=sessionData.session.user.app_metadata?.role;
+      const teacherIdentity=email==='teacher@auraway.app'||['teacher','school_admin'].includes(appRole);
+      // A school-linked teacher is detected by the server-authorized calendar context.
+      // The query string never grants teacher permissions or changes data access.
+      const teacherPortal=teacherIdentity||(schoolContext?.can_manage===true);
+      setCalendarPortalNav(teacherPortal);
       if(!schoolContext){
-        const email=sessionData.session.user.email?.toLowerCase();
-        const appRole=sessionData.session.user.app_metadata?.role;
-        const isTeacher=email==='teacher@auraway.app'||['teacher','school_admin'].includes(appRole);
         $('calendarNotice').style.display='none';
-        if(isTeacher){$('createSchoolPanel').style.display='block';}
+        if(teacherIdentity){$('createSchoolPanel').style.display='block';}
         else{$('calendarNotice').style.display='block';$('calendarNotice').textContent='Your student account is not linked to a school calendar yet. Ask your school teacher to connect your student profile.';}
         return;
       }
