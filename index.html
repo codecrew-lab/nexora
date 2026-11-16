@@ -195,11 +195,11 @@
         </div>
       </section>
 
-      <div class="card" id="examCountdownSection" style="margin-bottom: 24px;">
+      <section class="card" id="examCountdownSection" aria-live="polite" style="margin-bottom:24px;display:block!important;visibility:visible!important;">
         <h3>Next Exam 🎯</h3>
         <p id="dashExamName" style="font-weight: 700; margin-top: 8px;">No upcoming exams scheduled</p>
         <p id="dashExamCountdown" style="color: var(--text-secondary); font-size: 0.9rem;">Add an exam in the Exams section to see your countdown.</p>
-      </div>
+      </section>
 
       <!-- Today's Real Tasks & Quick Actions -->
       <div class="grid-cards" id="tasksQuickSection" style="grid-template-columns: 2fr 1fr;">
@@ -228,7 +228,7 @@
         <div style="display: grid; gap: 10px;">
           <label><input type="checkbox" data-dashboard-section="statsSection" checked> Show overview and study streak</label>
           <label><input type="checkbox" data-dashboard-section="assignmentProgressSection" checked> Show cloud assignment progress</label>
-          <label><input type="checkbox" data-dashboard-section="examCountdownSection" checked> Show next exam countdown</label>
+          <label><input type="checkbox" checked disabled> Always show next exam countdown</label>
           <label><input type="checkbox" data-dashboard-section="tasksQuickSection" checked> Show tasks and quick actions</label>
         </div>
       </details>
@@ -443,17 +443,21 @@
       const countdown = document.getElementById('dashExamCountdown');
       if (!name || !countdown) return;
       let scheduledExams = [];
-      try { scheduledExams = JSON.parse(localStorage.getItem('auraway_exams') || '[]'); } catch (e) {}
+      try {
+        const stored = JSON.parse(localStorage.getItem('auraway_exams') || '[]');
+        scheduledExams = Array.isArray(stored) ? stored : [];
+      } catch (e) { scheduledExams = []; }
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const upcoming = scheduledExams
-        .filter(exam => /^\d{4}-\d{2}-\d{2}$/.test(exam.date || ''))
-        .map(exam => ({ ...exam, target: new Date(Number(exam.date.slice(0,4)), Number(exam.date.slice(5,7))-1, Number(exam.date.slice(8,10))) }))
+        .filter(exam => exam && /^\d{4}-\d{2}-\d{2}$/.test(exam.date || ''))
+        .map(exam => ({ ...exam, target: new Date(Number(exam.date.slice(0,4)), Number(exam.date.slice(5,7))-1, Number(exam.date.slice(8,10)), 23, 59, 59) }))
         .filter(exam => exam.target >= today)
         .sort((a,b) => a.target - b.target)[0];
       if (!upcoming) {
         name.textContent = 'No upcoming exams scheduled';
-        countdown.textContent = 'Add an exam in the Exams section to see your countdown.';
+        countdown.textContent = 'Add your next exam date to start the live countdown.';
+        name.innerHTML = 'No upcoming exams yet · <a href="exam.html">Add an exam</a>';
         return;
       }
       name.textContent = upcoming.subject || 'Upcoming examination';
@@ -469,6 +473,7 @@
     }
     renderDashboardExamCountdown();
     window.setInterval(renderDashboardExamCountdown, 60000);
+    window.addEventListener('storage', event => { if (event.key === 'auraway_exams') renderDashboardExamCountdown(); });
 
     // Dashboard section visibility preferences
     const dashboardPrefs = (() => { try { return JSON.parse(localStorage.getItem('auraway_dashboard_prefs') || '{}'); } catch (e) { return {}; } })();
