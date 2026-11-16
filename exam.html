@@ -155,10 +155,18 @@
     const examForm = document.getElementById('examForm');
     const examsList = document.getElementById('examsList');
 
-    let exams = JSON.parse(localStorage.getItem('auraway_exams')) || [
-      { id: 1, subject: 'Social Science Term Exam', date: '2026-11-24', totalChapters: 10, completedChapters: 6 },
-      { id: 2, subject: 'IT Practical & Theory', date: '2026-11-18', totalChapters: 5, completedChapters: 4 }
-    ];
+    // Use the same saved exam list as the dashboard. Never show demo exams as real school dates.
+    let exams = [];
+    try {
+      const savedExams = JSON.parse(localStorage.getItem('auraway_exams') || '[]');
+      exams = Array.isArray(savedExams) ? savedExams.filter(exam =>
+        exam && typeof exam.subject === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(exam.date || '')
+      ) : [];
+    } catch (error) {
+      console.warn('Saved exam list was invalid; starting with an empty list.', error);
+      exams = [];
+    }
 
     function saveAndRenderExams() {
       localStorage.setItem('auraway_exams', JSON.stringify(exams));
@@ -168,16 +176,19 @@
     function getExamTarget(dateStr) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return null;
       const [year, month, day] = dateStr.split('-').map(Number);
-      const target = new Date(year, month - 1, day);
+      const target = new Date(year, month - 1, day, 23, 59, 59, 999);
+      if (target.getFullYear() !== year || target.getMonth() !== month - 1 || target.getDate() !== day) return null;
       return Number.isNaN(target.getTime()) ? null : target;
     }
 
     function calculateDaysLeft(dateStr) {
-      const target = getExamTarget(dateStr);
-      if (!target) return -1;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return -1;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const targetDay = new Date(year, month - 1, day);
+      if (targetDay.getFullYear() !== year || targetDay.getMonth() !== month - 1 || targetDay.getDate() !== day) return -1;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      return Math.round((target - today) / 86400000);
+      return Math.round((targetDay - today) / 86400000);
     }
 
     function formatExamCountdown(dateStr) {
