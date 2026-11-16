@@ -11,40 +11,48 @@
   <script src="supabase.js"></script>
   <script src="portal-switcher.js" defer></script>
   <style>
-    .calendar-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.8fr);gap:16px;align-items:start}
-    .calendar-panel,.calendar-side{background:var(--bg-card);border:1px solid var(--border-color);border-radius:18px;padding:16px;min-width:0}
-    .calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-    .calendar-toolbar h2{margin:0;font-size:1.1rem}
-    .calendar-toolbar button{min-width:38px}
-    .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
-    .calendar-weekday{text-align:center;color:var(--text-secondary);font-size:.72rem;font-weight:750;padding:7px 0}
-    .calendar-day{position:relative;min-height:76px;padding:7px 5px;border:1px solid var(--border-color);border-radius:11px;background:var(--bg-primary);color:var(--text-primary);text-align:left;overflow:hidden;cursor:pointer}
-    .calendar-day:disabled{cursor:default;opacity:.38}
+    .calendar-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(290px,.85fr);gap:18px;align-items:start}
+    .calendar-panel,.calendar-side{background:var(--bg-card);border:1px solid var(--border-color);border-radius:20px;padding:18px;min-width:0;box-shadow:0 8px 28px rgba(0,0,0,.08)}
+    .calendar-toolbar{display:grid;grid-template-columns:44px 1fr 44px auto;align-items:center;gap:9px;margin-bottom:16px}
+    .calendar-toolbar h2{margin:0;text-align:center;font-size:1.12rem;font-weight:800}
+    .calendar-toolbar button{min-height:40px;min-width:40px}
+    .calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+    .calendar-weekday{text-align:center;color:var(--text-secondary);font-size:.72rem;font-weight:800;padding:8px 0}
+    .calendar-day{position:relative;min-height:88px;padding:9px 7px;border:1px solid var(--border-color);border-radius:13px;background:var(--bg-primary);color:var(--text-primary);text-align:left;overflow:hidden;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+    .calendar-day:not(:disabled):hover{border-color:var(--accent-primary);transform:translateY(-1px)}
+    .calendar-day:disabled{cursor:default;opacity:.25}
     .calendar-day.is-today{outline:2px solid var(--accent-primary);outline-offset:-2px}
     .calendar-day.is-selected{background:rgba(59,130,246,.13);border-color:var(--accent-primary)}
-    .calendar-day-number{font-size:.8rem;font-weight:750}
-    .calendar-dot{display:block;margin-top:5px;padding:2px 4px;border-radius:5px;font-size:.62rem;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(59,130,246,.15);color:var(--accent-primary)}
+    .calendar-day-number{font-size:.84rem;font-weight:800}
+    .calendar-dot{display:block;margin-top:5px;padding:3px 5px;border-radius:6px;font-size:.64rem;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(59,130,246,.15);color:var(--accent-primary)}
     .calendar-dot.holiday{background:rgba(239,68,68,.14);color:#ef4444}
     .calendar-dot.working_day{background:rgba(16,185,129,.14);color:#10b981}
     .calendar-dot.exam{background:rgba(245,158,11,.16);color:#f59e0b}
     .calendar-dot.event{background:rgba(139,92,246,.15);color:#a78bfa}
-    .calendar-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px;color:var(--text-secondary);font-size:.74rem}
+    .calendar-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:15px;color:var(--text-secondary);font-size:.75rem}
     .calendar-legend span{display:inline-flex;align-items:center;gap:5px}
     .calendar-legend i{width:8px;height:8px;border-radius:50%;display:inline-block;background:#ef4444}
     .calendar-legend .lg-work{background:#10b981}.calendar-legend .lg-exam{background:#f59e0b}.calendar-legend .lg-event{background:#a78bfa}
-    .calendar-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
-    .calendar-stat{padding:11px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary)}
-    .calendar-stat small{display:block;color:var(--text-secondary);font-size:.7rem}
-    .calendar-stat strong{display:block;font-size:1.15rem;margin-top:4px}
-    .calendar-form{display:grid;gap:10px;margin-top:12px}
-    .calendar-form label{display:grid;gap:5px;color:var(--text-secondary);font-size:.8rem}
-    .calendar-form input,.calendar-form select,.calendar-form textarea{width:100%;box-sizing:border-box;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-color);border-radius:10px;padding:10px;font:inherit}
-    .calendar-event{padding:11px;border:1px solid var(--border-color);border-radius:12px;margin-top:8px;background:var(--bg-primary)}
+    .calendar-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+    .calendar-stat{padding:13px;border:1px solid var(--border-color);border-radius:15px;background:var(--bg-card)}
+    .calendar-stat small{display:block;color:var(--text-secondary);font-size:.72rem}
+    .calendar-stat strong{display:block;font-size:1.3rem;margin-top:5px}
+    .calendar-form{display:grid;gap:11px;margin-top:13px}
+    .calendar-form label{display:grid;gap:6px;color:var(--text-secondary);font-size:.8rem;font-weight:650}
+    .calendar-form input,.calendar-form select,.calendar-form textarea{width:100%;box-sizing:border-box;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-color);border-radius:11px;padding:11px;font:inherit}
+    .calendar-form input:focus,.calendar-form select:focus,.calendar-form textarea:focus{outline:2px solid var(--accent-primary);outline-offset:1px}
+    .calendar-event{padding:13px;border:1px solid var(--border-color);border-radius:14px;margin-top:9px;background:var(--bg-primary)}
     .calendar-event-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-    .calendar-event-type{font-size:.68rem;font-weight:750;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary)}
+    .calendar-event-type{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary)}
     .calendar-empty{padding:20px;text-align:center;color:var(--text-secondary);border:1px dashed var(--border-color);border-radius:12px}
+    .calendar-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+    .calendar-actions .btn{padding:6px 10px;font-size:.76rem}
+    .calendar-section-title{font-size:1rem;margin:0}
+    .calendar-helper{font-size:.78rem;color:var(--text-secondary);margin:5px 0 0}
+    .calendar-staff-details{margin-top:14px;border:1px solid var(--border-color);border-radius:13px;padding:11px}
+    .calendar-staff-details summary{cursor:pointer;font-weight:750;font-size:.84rem}
     @media(max-width:820px){.calendar-layout{grid-template-columns:1fr}}
-    @media(max-width:480px){.calendar-day{min-height:62px;padding:5px 3px}.calendar-dot{font-size:.55rem}.calendar-panel,.calendar-side{padding:11px}.calendar-stats{gap:5px}.calendar-stat{padding:8px}}
+    @media(max-width:520px){.calendar-day{min-height:65px;padding:6px 4px}.calendar-dot{font-size:.56rem;margin-top:4px}.calendar-panel,.calendar-side{padding:12px;border-radius:16px}.calendar-stats{gap:6px}.calendar-stat{padding:9px}.calendar-toolbar{grid-template-columns:38px 1fr 38px auto;gap:5px}.calendar-toolbar h2{font-size:.96rem}.calendar-toolbar button{min-width:36px;padding:6px}}
   </style>
 </head>
 <body>
@@ -91,29 +99,31 @@
             <h2 style="font-size:1.05rem;margin:0;">Selected date</h2>
             <p id="selectedDateLabel" style="color:var(--text-secondary);font-size:.82rem;margin:5px 0 12px;">Choose a date on the calendar.</p>
             <div id="selectedDateEvents"><p class="calendar-empty">No date selected.</p></div>
-            <div id="calendarManager" style="display:none;margin-top:16px;border-top:1px solid var(--border-color);padding-top:14px;">
-              <h3 id="calendarFormTitle" style="margin:0;">＋ Add calendar entry</h3>
+            <div id="calendarManager" style="display:none;margin-top:17px;border-top:1px solid var(--border-color);padding-top:16px;">
+              <h3 id="calendarFormTitle" class="calendar-section-title">＋ Add a calendar entry</h3>
+              <p class="calendar-helper">Add a holiday, working day, exam or school event. Students see changes automatically.</p>
               <form id="calendarEventForm" class="calendar-form">
                 <input type="hidden" id="calendarEventId">
-                <label>Title<input id="calendarEventName" maxlength="120" required placeholder="e.g. Onam Holiday"></label>
+                <label>Event name<input id="calendarEventName" maxlength="120" required placeholder="e.g. Onam Holiday"></label>
                 <label>Date<input id="calendarEventDate" type="date" required></label>
-                <label>Type<select id="calendarEventType"><option value="holiday">Holiday</option><option value="working_day">Working day</option><option value="event">School event</option><option value="exam">Examination</option></select></label>
-                <label>Details (optional)<textarea id="calendarEventDescription" rows="2" maxlength="500" placeholder="Short note for students and staff"></textarea></label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" id="calendarSaveButton" type="submit">Save entry</button><button class="btn" id="calendarCancelEdit" type="button" style="background:#64748b;">Clear</button></div>
+                <label>Category<select id="calendarEventType"><option value="holiday">Holiday</option><option value="working_day">Working day</option><option value="event">School event</option><option value="exam">Examination</option></select></label>
+                <label>Note (optional)<textarea id="calendarEventDescription" rows="2" maxlength="500" placeholder="Add a short note…"></textarea></label>
+                <div class="calendar-actions"><button class="btn" id="calendarSaveButton" type="submit">Save entry</button><button class="btn" id="calendarCancelEdit" type="button" style="background:#64748b;">Cancel</button></div>
                 <p id="calendarFormMessage" role="status" style="font-size:.78rem;color:var(--text-secondary);margin:0;"></p>
               </form>
             </div>
-            <div id="calendarStaffTools" style="display:none;margin-top:14px;">
-              <h3 style="font-size:.95rem;margin:0 0 7px;">Connect student accounts</h3>
-              <p style="font-size:.76rem;color:var(--text-secondary);margin:0 0 8px;">Choose which unassigned student profiles belong to this school. Profiles already linked to another school are not shown.</p>
+            <details id="calendarStaffTools" class="calendar-staff-details" style="display:none;">
+              <summary>Student account linking and school setup</summary>
+              <p style="font-size:.76rem;color:var(--text-secondary);margin:9px 0;">Link unassigned student profiles to this school. Existing links to other schools are not shown.</p>
               <div id="unassignedStudentsList" style="max-height:220px;overflow:auto;"><p class="calendar-empty">Loading student list…</p></div>
               <button class="btn" id="linkStudentsButton" type="button" style="width:100%;margin-top:9px;background:#0f766e;">Link selected students</button>
               <p id="linkStudentsMessage" style="font-size:.75rem;color:var(--text-secondary);"></p>
-            </div>
+            </details>
           </aside>
         </div>
         <section class="card" style="margin-top:16px;">
-          <h2 style="font-size:1.05rem;margin:0 0 8px;">This month's schedule</h2>
+          <h2 style="font-size:1.05rem;margin:0 0 5px;">This month's schedule</h2>
+          <p class="calendar-helper">Select an entry to edit or remove it quickly.</p>
           <div id="calendarMonthEvents"></div>
         </section>
       </section>
@@ -215,16 +225,22 @@
       if(!calendarEvents.length){const empty=document.createElement('p');empty.className='calendar-empty';empty.textContent='No calendar entries have been added for this month.';box.append(empty);return;}
       calendarEvents.forEach(event=>{const row=document.createElement('div');row.className='calendar-event';row.style.display='flex';row.style.justifyContent='space-between';row.style.gap='10px';
         const text=document.createElement('div');const date=document.createElement('small');date.className='calendar-event-type';date.textContent=prettyDate(event.event_date)+' · '+typeLabels[event.event_type];const title=document.createElement('strong');title.style.display='block';title.textContent=event.title;text.append(date,title);row.append(text);
-        if(schoolContext?.can_manage){const edit=document.createElement('button');edit.type='button';edit.className='btn';edit.textContent='Edit';edit.style.cssText='padding:5px 9px;font-size:.75rem;align-self:center;';edit.addEventListener('click',()=>{selectedDate=new Date(event.event_date+'T00:00:00');renderCalendar();fillEventForm(event);});row.append(edit);}
+        if(schoolContext?.can_manage){
+          const actions=document.createElement('div');actions.className='calendar-actions';actions.style.marginTop='0';
+          const edit=document.createElement('button');edit.type='button';edit.className='btn';edit.textContent='Edit';edit.addEventListener('click',()=>{selectedDate=new Date(event.event_date+'T00:00:00');renderCalendar();fillEventForm(event);});
+          const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='Delete';del.style.background='#b91c1c';del.addEventListener('click',()=>deleteCalendarEvent(event.id));
+          actions.append(edit,del);row.append(actions);
+        }
         box.append(row);
       });
     }
     function fillEventForm(event){
       $('calendarEventId').value=event.id;$('calendarEventName').value=event.title;$('calendarEventDate').value=event.event_date;$('calendarEventType').value=event.event_type;$('calendarEventDescription').value=event.description||'';
-      $('calendarFormTitle').textContent='Edit calendar entry';$('calendarSaveButton').textContent='Update entry';$('calendarFormMessage').textContent='';
-      $('calendarEventName').focus();
+      $('calendarFormTitle').textContent='✏️ Edit calendar entry';$('calendarSaveButton').textContent='Update entry';$('calendarFormMessage').textContent='';
+      $('calendarManager').scrollIntoView({behavior:'smooth',block:'nearest'});
+      $('calendarEventName').focus({preventScroll:true});
     }
-    function resetEventForm(){ $('calendarEventForm').reset();$('calendarEventId').value='';$('calendarEventDate').value=isoDate(selectedDate);$('calendarFormTitle').textContent='＋ Add calendar entry';$('calendarSaveButton').textContent='Save entry';$('calendarFormMessage').textContent='';}
+    function resetEventForm(){ $('calendarEventForm').reset();$('calendarEventId').value='';$('calendarEventDate').value=isoDate(selectedDate);$('calendarFormTitle').textContent='＋ Add a calendar entry';$('calendarSaveButton').textContent='Save entry';$('calendarFormMessage').textContent='';}
     async function deleteCalendarEvent(id){
       if(!confirm('Delete this calendar entry?'))return;
       const {error}=await supabaseClient.from('academic_calendar_events').delete().eq('id',id);
