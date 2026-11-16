@@ -165,7 +165,7 @@
     }
 
     function getExamTarget(dateStr) {
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateStr || '')) return null;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return null;
       const [year, month, day] = dateStr.split('-').map(Number);
       const target = new Date(year, month - 1, day);
       return Number.isNaN(target.getTime()) ? null : target;
@@ -272,6 +272,7 @@
     };
 
     renderExams();
+    window.setInterval(renderExams, 60000);
   </script>
   <script src="navigation.js" defer></script>
   <script src="back-navigation.js" defer></script>
