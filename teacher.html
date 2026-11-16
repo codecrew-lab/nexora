@@ -37,6 +37,19 @@
     .teacher-roster-tools .input-field{min-width:0}
     .teacher-roster-count{align-self:center;color:var(--text-secondary);font-size:.78rem;white-space:nowrap}
     #studentsRosterList .student-row[hidden]{display:none!important}
+
+    .quiz-manager-grid{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(320px,1.1fr);gap:16px}
+    .quiz-manager-card{min-width:0;padding:18px;border:1px solid var(--border-color);border-radius:16px;background:var(--bg-card)}
+    .quiz-manager-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .quiz-manager-fields .full{grid-column:1/-1}
+    .quiz-manager-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .quiz-manager-question{padding:12px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary);margin-top:9px}
+    .quiz-manager-question p{margin:5px 0;color:var(--text-secondary);font-size:.82rem}
+    .quiz-manager-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+    .quiz-manager-actions button{padding:6px 10px;font-size:.78rem}
+    @media(max-width:760px){.quiz-manager-grid{grid-template-columns:1fr}}
+    @media(max-width:520px){.quiz-manager-fields,.quiz-manager-options{grid-template-columns:1fr}.quiz-manager-fields .full{grid-column:auto}}
+
     @media(max-width:600px){.teacher-overview-grid{grid-template-columns:1fr 1fr}.teacher-overview-card:last-child{grid-column:1/-1}.teacher-roster-tools{grid-template-columns:1fr}.teacher-roster-count{white-space:normal}}
 
   </style>
@@ -84,6 +97,7 @@
           <li><a href="#teacherAttendanceManager">📋 <span>Attendance</span></a></li>
           <li><a href="#teacherMarksSection">📝 <span>Marks</span></a></li>
           <li><a href="#teacherAssignmentsSection">📚 <span>Assignments</span></a></li>
+          <li><a href="#teacherQuizManager">🧠 <span>Quiz Manager</span></a></li>
           <li><a href="#teacherActivitySection">🔔 <span>Activity</span></a></li>
           <li><a href="#teacherAnalyticsSection">📊 <span>Analytics</span></a></li>
         </ul>
@@ -115,6 +129,60 @@
         <button type="button" class="btn" onclick="document.getElementById('addStudentForm').scrollIntoView({behavior:'smooth',block:'center'})">＋ Add student</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherAttendanceManager').scrollIntoView({behavior:'smooth'})">Mark attendance</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('assignHwForm').scrollIntoView({behavior:'smooth',block:'center'})">Publish assignment</button>
+      </div>
+
+    </section>
+
+    <section id="teacherQuizManager" class="card" style="margin:0 0 22px;scroll-margin-top:20px;">
+      <div class="teacher-command-heading" style="margin-bottom:14px;">
+        <div><span class="teacher-eyebrow">PULSE LEARNING</span><h2>Daily Quiz Question Manager</h2><p>Create, update and publish general subject questions for Standards 5–12.</p></div>
+        <span class="teacher-live-label"><span></span> Teacher controls</span>
+      </div>
+      <div class="quiz-manager-grid">
+        <form id="teacherQuizQuestionForm" class="quiz-manager-card">
+          <input type="hidden" id="teacherQuizQuestionId">
+          <h3 id="teacherQuizFormHeading" style="margin:0 0 12px;">＋ Add a question</h3>
+          <div class="quiz-manager-fields">
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Subject
+              <select id="teacherQuizSubject" class="input-field" required>
+                <option>Mathematics</option><option>Science</option><option>English</option><option>Social Science</option><option>Malayalam</option><option>Computer Science</option>
+              </select>
+            </label>
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Question
+              <textarea id="teacherQuizQuestionText" class="input-field" rows="3" maxlength="500" required placeholder="Enter a general subject question"></textarea>
+            </label>
+            <div class="full"><span style="font-size:.82rem;color:var(--text-secondary);">Four answer options</span></div>
+            <div class="quiz-manager-options full">
+              <input id="teacherQuizOption0" class="input-field" maxlength="160" required placeholder="Option A">
+              <input id="teacherQuizOption1" class="input-field" maxlength="160" required placeholder="Option B">
+              <input id="teacherQuizOption2" class="input-field" maxlength="160" required placeholder="Option C">
+              <input id="teacherQuizOption3" class="input-field" maxlength="160" required placeholder="Option D">
+            </div>
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Correct answer
+              <select id="teacherQuizCorrectOption" class="input-field" required><option value="0">Option A</option><option value="1">Option B</option><option value="2">Option C</option><option value="3">Option D</option></select>
+            </label>
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Short explanation (optional)
+              <textarea id="teacherQuizExplanation" class="input-field" rows="2" maxlength="500" placeholder="Explain why this answer is correct"></textarea>
+            </label>
+          </div>
+          <p id="teacherQuizFormMessage" role="status" style="font-size:.82rem;color:var(--text-secondary);min-height:20px;"></p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" id="teacherQuizSaveButton" type="submit">Save question</button>
+            <button class="btn teacher-secondary-action" id="teacherQuizResetButton" type="button">Clear form</button>
+          </div>
+        </form>
+        <div class="quiz-manager-card">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+            <h3 style="margin:0;">Question bank</h3>
+            <button class="btn teacher-secondary-action" id="teacherQuizRefreshButton" type="button">↻ Refresh</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px;">
+            <select id="teacherQuizFilter" class="input-field"><option value="">All subjects</option><option>Mathematics</option><option>Science</option><option>English</option><option>Social Science</option><option>Malayalam</option><option>Computer Science</option></select>
+            <span id="teacherQuizQuestionCount" class="quiz-status" style="align-self:center;white-space:nowrap;">— questions</span>
+          </div>
+          <p id="teacherQuizListMessage" class="quiz-status" role="status"></p>
+          <div id="teacherQuizQuestionList" aria-live="polite"><p class="quiz-status">Loading question bank…</p></div>
+        </div>
       </div>
     </section>
 
@@ -331,6 +399,7 @@
       await loadTeacherAnalytics();
       loadStudentActivity();
       loadAssignmentOverview();
+      await loadTeacherQuizManager();
     }
 
     async function requestTeacherAccess(action, event) {
@@ -1034,6 +1103,99 @@
         }
       });
     });
+
+    let teacherQuizQuestions = [];
+    function resetTeacherQuizForm() {
+      document.getElementById('teacherQuizQuestionForm').reset();
+      document.getElementById('teacherQuizQuestionId').value = '';
+      document.getElementById('teacherQuizFormHeading').textContent = '＋ Add a question';
+      document.getElementById('teacherQuizSaveButton').textContent = 'Save question';
+      document.getElementById('teacherQuizFormMessage').textContent = '';
+    }
+
+    async function loadTeacherQuizManager() {
+      const list = document.getElementById('teacherQuizQuestionList');
+      if (!list || !supabaseClient) return;
+      list.innerHTML = '<p class="quiz-status">Loading question bank…</p>';
+      const subject = document.getElementById('teacherQuizFilter')?.value || null;
+      const { data, error } = await supabaseClient.rpc('pulse_teacher_list_quiz_questions', { p_subject: subject });
+      if (error) {
+        list.textContent = 'Could not load question bank: ' + error.message;
+        document.getElementById('teacherQuizListMessage').textContent = 'Check that you are signed in with the authorised teacher account.';
+        return;
+      }
+      teacherQuizQuestions = data || [];
+      document.getElementById('teacherQuizQuestionCount').textContent = teacherQuizQuestions.length + ' questions';
+      document.getElementById('teacherQuizListMessage').textContent = 'Questions marked Active can be selected for daily student quizzes.';
+      list.replaceChildren();
+      if (!teacherQuizQuestions.length) {
+        const empty = document.createElement('p'); empty.className = 'quiz-status'; empty.textContent = 'No questions found for this subject yet.'; list.append(empty); return;
+      }
+      teacherQuizQuestions.forEach(question => {
+        const card = document.createElement('article'); card.className = 'quiz-manager-question';
+        const top = document.createElement('div'); top.style.cssText = 'display:flex;justify-content:space-between;gap:8px;align-items:flex-start;';
+        const title = document.createElement('strong'); title.textContent = question.subject;
+        const status = document.createElement('span'); status.textContent = question.is_active ? 'Active' : 'Inactive';
+        status.style.cssText = 'font-size:.72rem;font-weight:700;color:' + (question.is_active ? '#10b981' : '#f59e0b');
+        top.append(title,status);
+        const body = document.createElement('p'); body.textContent = question.question;
+        const answer = document.createElement('p');
+        const letters = ['A','B','C','D'];
+        answer.textContent = 'Correct: ' + letters[question.correct_option] + ' · ' + (question.options?.[question.correct_option] || '');
+        card.append(top,body,answer);
+        const actions = document.createElement('div'); actions.className = 'quiz-manager-actions';
+        const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn teacher-secondary-action'; edit.textContent = 'Edit';
+        edit.addEventListener('click', () => {
+          document.getElementById('teacherQuizQuestionId').value = question.id;
+          document.getElementById('teacherQuizSubject').value = question.subject;
+          document.getElementById('teacherQuizQuestionText').value = question.question;
+          (question.options || []).forEach((option,index) => { const field=document.getElementById('teacherQuizOption'+index); if(field) field.value=option; });
+          document.getElementById('teacherQuizCorrectOption').value = String(question.correct_option);
+          document.getElementById('teacherQuizExplanation').value = question.explanation || '';
+          document.getElementById('teacherQuizFormHeading').textContent = 'Edit question #' + question.id;
+          document.getElementById('teacherQuizSaveButton').textContent = 'Update question';
+          document.getElementById('teacherQuizFormMessage').textContent = 'Editing this question will update it in the shared daily question bank.';
+          document.getElementById('teacherQuizManager').scrollIntoView({behavior:'smooth',block:'start'});
+        });
+        const toggle = document.createElement('button'); toggle.type='button'; toggle.className='btn teacher-secondary-action'; toggle.textContent=question.is_active?'Deactivate':'Activate';
+        toggle.addEventListener('click', async () => {
+          toggle.disabled=true;
+          const {error:toggleError}=await supabaseClient.rpc('pulse_teacher_set_quiz_question_active',{p_id:question.id,p_active:!question.is_active});
+          if(toggleError){document.getElementById('teacherQuizListMessage').textContent='Could not update question: '+toggleError.message;toggle.disabled=false;return;}
+          await loadTeacherQuizManager();
+        });
+        actions.append(edit,toggle); card.append(actions); list.append(card);
+      });
+    }
+
+    document.getElementById('teacherQuizQuestionForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const save = document.getElementById('teacherQuizSaveButton');
+      const msg = document.getElementById('teacherQuizFormMessage');
+      const options = [0,1,2,3].map(index => document.getElementById('teacherQuizOption'+index).value.trim());
+      if (options.some(option => !option)) { msg.textContent='Please complete all four options.'; return; }
+      save.disabled = true; msg.textContent = 'Saving question…';
+      try {
+        const idValue = document.getElementById('teacherQuizQuestionId').value;
+        const {error} = await supabaseClient.rpc('pulse_teacher_save_quiz_question', {
+          p_id: idValue ? Number(idValue) : null,
+          p_subject: document.getElementById('teacherQuizSubject').value,
+          p_question: document.getElementById('teacherQuizQuestionText').value.trim(),
+          p_options: options,
+          p_correct_option: Number(document.getElementById('teacherQuizCorrectOption').value),
+          p_explanation: document.getElementById('teacherQuizExplanation').value.trim()
+        });
+        if (error) throw error;
+        resetTeacherQuizForm();
+        document.getElementById('teacherQuizFormMessage').textContent = 'Question saved successfully.';
+        await loadTeacherQuizManager();
+      } catch (error) {
+        msg.textContent = error.message || 'Could not save question.';
+      } finally { save.disabled = false; }
+    });
+    document.getElementById('teacherQuizResetButton').addEventListener('click', resetTeacherQuizForm);
+    document.getElementById('teacherQuizRefreshButton').addEventListener('click', loadTeacherQuizManager);
+    document.getElementById('teacherQuizFilter').addEventListener('change', loadTeacherQuizManager);
   </script>
   <script src="navigation.js" defer></script>
 <script>
