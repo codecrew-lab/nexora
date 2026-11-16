@@ -385,7 +385,10 @@
     const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/bright-handler';
 
     async function showTeacherPortal(session) {
-      if (session?.user?.email?.toLowerCase() !== 'teacher@auraway.app') {
+      const email = session?.user?.email?.toLowerCase();
+      const appRole = session?.user?.app_metadata?.role;
+      const isAuthorisedTeacher = email === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(appRole);
+      if (!isAuthorisedTeacher) {
         await supabaseClient.auth.signOut();
         document.getElementById('teacherLoginError').textContent = 'This account is not authorized for the teacher portal.';
         return;

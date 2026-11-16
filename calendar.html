@@ -280,7 +280,9 @@
       if(error){$('calendarNotice').textContent='Could not check school access: '+error.message;return;}
       schoolContext=Array.isArray(data)&&data.length?data[0]:null;
       if(!schoolContext){
-        const isTeacher=sessionData.session.user.email?.toLowerCase()==='teacher@auraway.app';
+        const email=sessionData.session.user.email?.toLowerCase();
+        const appRole=sessionData.session.user.app_metadata?.role;
+        const isTeacher=email==='teacher@auraway.app'||['teacher','school_admin'].includes(appRole);
         $('calendarNotice').style.display='none';
         if(isTeacher){$('createSchoolPanel').style.display='block';}
         else{$('calendarNotice').style.display='block';$('calendarNotice').textContent='Your student account is not linked to a school calendar yet. Ask your school teacher to connect your student profile.';}
