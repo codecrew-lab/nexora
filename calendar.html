@@ -286,6 +286,7 @@
         else{$('calendarNotice').style.display='block';$('calendarNotice').textContent='Your student account is not linked to a school calendar yet. Ask your school teacher to connect your student profile.';}
         return;
       }
+      $('createSchoolPanel').style.display='none';
       $('calendarSchoolSubtitle').textContent=schoolContext.school_name+' · School academic calendar';
       $('calendarManager').style.display=schoolContext.can_manage?'block':'none';
       $('calendarStaffTools').style.display=schoolContext.can_manage?'block':'none';
