@@ -45,6 +45,9 @@
     .quiz-manager-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .quiz-manager-question{padding:12px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary);margin-top:9px}
     .quiz-manager-question p{margin:5px 0;color:var(--text-secondary);font-size:.82rem}
+    .quiz-bank-pagination{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color)}
+    .quiz-bank-pagination .btn{min-width:112px}
+    .quiz-bank-progress{font-size:.76rem;color:var(--text-secondary);text-align:center}
     .quiz-manager-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
     .quiz-manager-actions button{padding:6px 10px;font-size:.78rem}
     @media(max-width:760px){.quiz-manager-grid{grid-template-columns:1fr}}
@@ -1109,33 +1112,23 @@
     });
 
     let teacherQuizQuestions = [];
-    function resetTeacherQuizForm() {
-      document.getElementById('teacherQuizQuestionForm').reset();
-      document.getElementById('teacherQuizQuestionId').value = '';
-      document.getElementById('teacherQuizFormHeading').textContent = '＋ Add a question';
-      document.getElementById('teacherQuizSaveButton').textContent = 'Save question';
-      document.getElementById('teacherQuizFormMessage').textContent = '';
-    }
+    let teacherQuizVisibleCount = 2;
+    const TEACHER_QUIZ_INITIAL_COUNT = 2;
+    const TEACHER_QUIZ_PAGE_SIZE = 3;
 
-    async function loadTeacherQuizManager() {
+    function renderTeacherQuizQuestionList() {
       const list = document.getElementById('teacherQuizQuestionList');
-      if (!list || !supabaseClient) return;
-      list.innerHTML = '<p class="quiz-status">Loading question bank…</p>';
-      const subject = document.getElementById('teacherQuizFilter')?.value || null;
-      const { data, error } = await supabaseClient.rpc('pulse_teacher_list_quiz_questions', { p_subject: subject });
-      if (error) {
-        list.textContent = 'Could not load question bank: ' + error.message;
-        document.getElementById('teacherQuizListMessage').textContent = 'Check that you are signed in with the authorised teacher account.';
-        return;
-      }
-      teacherQuizQuestions = data || [];
-      document.getElementById('teacherQuizQuestionCount').textContent = teacherQuizQuestions.length + ' questions';
-      document.getElementById('teacherQuizListMessage').textContent = 'Questions marked Active can be selected for daily student quizzes.';
+      if (!list) return;
       list.replaceChildren();
       if (!teacherQuizQuestions.length) {
-        const empty = document.createElement('p'); empty.className = 'quiz-status'; empty.textContent = 'No questions found for this subject yet.'; list.append(empty); return;
+        const empty = document.createElement('p');
+        empty.className = 'quiz-status';
+        empty.textContent = 'No questions found for this subject yet.';
+        list.append(empty);
+        return;
       }
-      teacherQuizQuestions.forEach(question => {
+      const visibleQuestions = teacherQuizQuestions.slice(0, teacherQuizVisibleCount);
+      visibleQuestions.forEach(question => {
         const card = document.createElement('article'); card.className = 'quiz-manager-question';
         const top = document.createElement('div'); top.style.cssText = 'display:flex;justify-content:space-between;gap:8px;align-items:flex-start;';
         const title = document.createElement('strong'); title.textContent = question.subject;
@@ -1170,6 +1163,61 @@
         });
         actions.append(edit,toggle); card.append(actions); list.append(card);
       });
+
+      const controls = document.createElement('div');
+      controls.className = 'quiz-bank-pagination';
+      const progress = document.createElement('span');
+      progress.className = 'quiz-bank-progress';
+      progress.textContent = 'Showing ' + visibleQuestions.length + ' of ' + teacherQuizQuestions.length + ' questions';
+      controls.append(progress);
+      if (teacherQuizVisibleCount > TEACHER_QUIZ_INITIAL_COUNT) {
+        const less = document.createElement('button');
+        less.type = 'button'; less.className = 'btn teacher-secondary-action'; less.textContent = 'Show less';
+        less.addEventListener('click', () => {
+          teacherQuizVisibleCount = TEACHER_QUIZ_INITIAL_COUNT;
+          renderTeacherQuizQuestionList();
+        });
+        controls.append(less);
+      }
+      if (visibleQuestions.length < teacherQuizQuestions.length) {
+        const more = document.createElement('button');
+        more.type = 'button'; more.className = 'btn'; more.textContent = 'Show 3 more ↓';
+        more.addEventListener('click', () => {
+          teacherQuizVisibleCount = Math.min(teacherQuizVisibleCount + TEACHER_QUIZ_PAGE_SIZE, teacherQuizQuestions.length);
+          renderTeacherQuizQuestionList();
+        });
+        controls.append(more);
+      }
+      list.append(controls);
+    }
+
+    function resetTeacherQuizForm() {
+      document.getElementById('teacherQuizQuestionForm').reset();
+      document.getElementById('teacherQuizQuestionId').value = '';
+      document.getElementById('teacherQuizFormHeading').textContent = '＋ Add a question';
+      document.getElementById('teacherQuizSaveButton').textContent = 'Save question';
+      document.getElementById('teacherQuizFormMessage').textContent = '';
+    }
+
+    async function loadTeacherQuizManager() {
+      const list = document.getElementById('teacherQuizQuestionList');
+      if (!list || !supabaseClient) return;
+      list.innerHTML = '<p class="quiz-status">Loading question bank…</p>';
+      const subject = document.getElementById('teacherQuizFilter')?.value || null;
+      const { data, error } = await supabaseClient.rpc('pulse_teacher_list_quiz_questions', { p_subject: subject });
+      if (error) {
+        list.textContent = 'Could not load question bank: ' + error.message;
+        document.getElementById('teacherQuizListMessage').textContent = 'Check that you are signed in with the authorised teacher account.';
+        return;
+      }
+      teacherQuizQuestions = data || [];
+      document.getElementById('teacherQuizQuestionCount').textContent = teacherQuizQuestions.length + ' questions';
+      document.getElementById('teacherQuizListMessage').textContent = 'Questions marked Active can be selected for daily student quizzes.';
+      teacherQuizQuestions = data || [];
+      teacherQuizVisibleCount = TEACHER_QUIZ_INITIAL_COUNT;
+      document.getElementById('teacherQuizQuestionCount').textContent = teacherQuizQuestions.length + ' questions';
+      document.getElementById('teacherQuizListMessage').textContent = 'Questions marked Active can be selected for daily student quizzes.';
+      renderTeacherQuizQuestionList();
     }
 
     document.getElementById('teacherQuizQuestionForm').addEventListener('submit', async event => {
