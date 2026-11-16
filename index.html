@@ -78,6 +78,7 @@
           <li><a href="planner.html">📅 <span>Study Planner</span></a></li>
           <li><a href="timetable.html">🗓️ <span>Timetable</span></a></li>
           <li><a href="exam.html">🎯 <span>Exams</span></a></li>
+          <li><a href="quiz.html">🧠 <span>Daily Quiz</span></a></li>
           <li><a href="marks.html">📈 <span>Marks Manager</span></a></li>
           <li><a href="attendance.html">📋 <span>Attendance</span></a></li>
           <li><a href="flashcards.html">🗂️ <span>Flashcards</span></a></li>
@@ -213,6 +214,7 @@
           <h3>Quick Actions</h3>
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
             <button class="btn" onclick="location.href='focus.html'">⏱️ Start Focus Session</button>
+            <button class="btn" style="background:transparent;border:1px solid var(--border-color);color:var(--text-primary);" onclick="location.href='quiz.html'">🧠 Open Daily Quiz</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='planner.html'">➕ Add Study Task</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='notes.html'">📝 Create Note</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='exam.html'">🎯 View Exams</button>
@@ -435,17 +437,38 @@
     document.getElementById('dashStudyStreak').textContent = `${studyStreak} ${studyStreak === 1 ? 'day' : 'days'}`;
     document.getElementById('dashStreakSub').textContent = studyStreak ? 'Keep it going — study a little each day!' : 'Complete a task or focus session to start.';
 
-    // Next upcoming exam countdown
-    let exams = [];
-    try { exams = JSON.parse(localStorage.getItem('auraway_exams') || '[]'); } catch (e) {}
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const upcomingExam = exams.filter(exam => exam.date && new Date(exam.date + 'T00:00:00') >= todayStart).sort((a, b) => a.date.localeCompare(b.date))[0];
-    if (upcomingExam) {
-      const examDate = new Date(upcomingExam.date + 'T00:00:00');
-      const daysLeft = Math.round((examDate - todayStart) / 86400000);
-      document.getElementById('dashExamName').textContent = upcomingExam.subject;
-      document.getElementById('dashExamCountdown').textContent = daysLeft === 0 ? 'Your exam is today!' : daysLeft === 1 ? 'Tomorrow is exam day.' : `${daysLeft} days remaining · ${upcomingExam.date}`;
+    // Live exam countdown — refreshes every minute using the student's local time.
+    function renderDashboardExamCountdown() {
+      const name = document.getElementById('dashExamName');
+      const countdown = document.getElementById('dashExamCountdown');
+      if (!name || !countdown) return;
+      let scheduledExams = [];
+      try { scheduledExams = JSON.parse(localStorage.getItem('auraway_exams') || '[]'); } catch (e) {}
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const upcoming = scheduledExams
+        .filter(exam => /^\\d{4}-\\d{2}-\\d{2}$/.test(exam.date || ''))
+        .map(exam => ({ ...exam, target: new Date(Number(exam.date.slice(0,4)), Number(exam.date.slice(5,7))-1, Number(exam.date.slice(8,10))) }))
+        .filter(exam => exam.target >= today)
+        .sort((a,b) => a.target - b.target)[0];
+      if (!upcoming) {
+        name.textContent = 'No upcoming exams scheduled';
+        countdown.textContent = 'Add an exam in the Exams section to see your countdown.';
+        return;
+      }
+      name.textContent = upcoming.subject || 'Upcoming examination';
+      const remaining = upcoming.target.getTime() - now.getTime();
+      if (remaining <= 0) {
+        countdown.textContent = 'Your exam is today! All the best.';
+        return;
+      }
+      const days = Math.floor(remaining / 86400000);
+      const hours = Math.floor((remaining % 86400000) / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      countdown.textContent = days + ' days · ' + hours + ' hours · ' + minutes + ' minutes remaining  •  ' + upcoming.date;
     }
+    renderDashboardExamCountdown();
+    window.setInterval(renderDashboardExamCountdown, 60000);
 
     // Dashboard section visibility preferences
     const dashboardPrefs = (() => { try { return JSON.parse(localStorage.getItem('auraway_dashboard_prefs') || '{}'); } catch (e) { return {}; } })();
