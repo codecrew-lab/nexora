@@ -56,7 +56,7 @@
   <div class="app-container">
     <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
-    <sidebar id="aurawaySidebar" aria-label="Main navigation">
+    <sidebar id="aurawaySidebar" aria-label="Main navigation" style="visibility:hidden;">
       <div class="logo-area"><span class="logo-text">PULSE</span></div>
       <ul class="nav-links">
         <li><a href="index.html">📊 Dashboard</a></li>
@@ -151,6 +151,7 @@
       const sidebar=$('aurawaySidebar');
       const logo=sidebar.querySelector('.logo-text');
       const list=sidebar.querySelector('.nav-links');
+      sidebar.style.visibility='visible';
       if(isTeacher){
         sidebar.setAttribute('aria-label','Teacher navigation');
         logo.textContent='PULSE-T';
