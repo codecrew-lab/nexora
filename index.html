@@ -20,7 +20,25 @@
     .pulse-school-snapshot .snapshot-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
     .pulse-school-snapshot .snapshot-link{color:var(--accent-primary);font-weight:650;text-decoration:none}
     .pulse-school-snapshot .snapshot-link:hover{text-decoration:underline}
-  </style>
+      /* High-visibility exam countdown */
+    .pulse-exam-focus{position:relative;overflow:hidden;padding:clamp(20px,4vw,32px);border:1px solid rgba(99,102,241,.38);background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.22),transparent 48%),linear-gradient(125deg,rgba(30,41,75,.98),rgba(15,23,42,.98));box-shadow:0 16px 42px rgba(15,23,42,.18)}
+    [data-theme="light"] .pulse-exam-focus{background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.14),transparent 48%),linear-gradient(125deg,#eef2ff,#fff);border-color:rgba(79,70,229,.25)}
+    .pulse-exam-focus-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .pulse-exam-eyebrow{font-size:.7rem;font-weight:850;letter-spacing:.18em;color:#a5b4fc}
+    .pulse-exam-focus h2{font-size:clamp(1.2rem,3vw,1.65rem);font-weight:850;margin:5px 0 0}
+    .pulse-exam-manage{font-size:.8rem;font-weight:750;color:#a5b4fc;text-decoration:none;padding:9px 12px;border:1px solid rgba(165,180,252,.32);border-radius:10px}
+    .pulse-exam-name{font-size:clamp(1.15rem,3vw,1.55rem);font-weight:850;margin:20px 0 12px;letter-spacing:-.02em}
+    .pulse-exam-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:620px}
+    .pulse-exam-count-unit{min-width:0;padding:clamp(12px,3vw,20px) 8px;text-align:center;border:1px solid rgba(165,180,252,.24);border-radius:16px;background:rgba(99,102,241,.12)}
+    .pulse-exam-count-unit strong{display:block;font-size:clamp(2.25rem,9vw,4.5rem);line-height:1.02;font-weight:950;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:#fff}
+    [data-theme="light"] .pulse-exam-count-unit strong{color:#1e1b4b}
+    .pulse-exam-count-unit span{display:block;margin-top:8px;font-size:.68rem;font-weight:850;letter-spacing:.16em;color:#c7d2fe}
+    [data-theme="light"] .pulse-exam-count-unit span{color:#4338ca}
+    .pulse-exam-date{font-size:.88rem;font-weight:650;color:#cbd5e1;margin:14px 0 0}
+    [data-theme="light"] .pulse-exam-date{color:#475569}
+    @media(max-width:420px){.pulse-exam-focus{padding:17px}.pulse-exam-count-grid{gap:6px}.pulse-exam-count-unit{border-radius:12px}.pulse-exam-count-unit strong{font-size:clamp(2rem,12vw,3.1rem)}.pulse-exam-count-unit span{font-size:.58rem}}
+
+</style>
 </head>
 <body class="pulse-student-portal">
   <div class="app-container">
@@ -447,24 +465,6 @@
     const studyStreak = getStudyStreak();
     document.getElementById('dashStudyStreak').textContent = `${studyStreak} ${studyStreak === 1 ? 'day' : 'days'}`;
     document.getElementById('dashStreakSub').textContent = studyStreak ? 'Keep it going — study a little each day!' : 'Complete a task or focus session to start.';
-
-    /* High-visibility exam countdown */
-    .pulse-exam-focus{position:relative;overflow:hidden;padding:clamp(20px,4vw,32px);border:1px solid rgba(99,102,241,.38);background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.22),transparent 48%),linear-gradient(125deg,rgba(30,41,75,.98),rgba(15,23,42,.98));box-shadow:0 16px 42px rgba(15,23,42,.18)}
-    [data-theme="light"] .pulse-exam-focus{background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.14),transparent 48%),linear-gradient(125deg,#eef2ff,#fff);border-color:rgba(79,70,229,.25)}
-    .pulse-exam-focus-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .pulse-exam-eyebrow{font-size:.7rem;font-weight:850;letter-spacing:.18em;color:#a5b4fc}
-    .pulse-exam-focus h2{font-size:clamp(1.2rem,3vw,1.65rem);font-weight:850;margin:5px 0 0}
-    .pulse-exam-manage{font-size:.8rem;font-weight:750;color:#a5b4fc;text-decoration:none;padding:9px 12px;border:1px solid rgba(165,180,252,.32);border-radius:10px}
-    .pulse-exam-name{font-size:clamp(1.15rem,3vw,1.55rem);font-weight:850;margin:20px 0 12px;letter-spacing:-.02em}
-    .pulse-exam-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:620px}
-    .pulse-exam-count-unit{min-width:0;padding:clamp(12px,3vw,20px) 8px;text-align:center;border:1px solid rgba(165,180,252,.24);border-radius:16px;background:rgba(99,102,241,.12)}
-    .pulse-exam-count-unit strong{display:block;font-size:clamp(2.25rem,9vw,4.5rem);line-height:1.02;font-weight:950;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:#fff}
-    [data-theme="light"] .pulse-exam-count-unit strong{color:#1e1b4b}
-    .pulse-exam-count-unit span{display:block;margin-top:8px;font-size:.68rem;font-weight:850;letter-spacing:.16em;color:#c7d2fe}
-    [data-theme="light"] .pulse-exam-count-unit span{color:#4338ca}
-    .pulse-exam-date{font-size:.88rem;font-weight:650;color:#cbd5e1;margin:14px 0 0}
-    [data-theme="light"] .pulse-exam-date{color:#475569}
-    @media(max-width:420px){.pulse-exam-focus{padding:17px}.pulse-exam-count-grid{gap:6px}.pulse-exam-count-unit{border-radius:12px}.pulse-exam-count-unit strong{font-size:clamp(2rem,12vw,3.1rem)}.pulse-exam-count-unit span{font-size:.58rem}}
 
     // Live exam countdown — refreshes every minute using the student's local time.
     function renderDashboardExamCountdown() {
