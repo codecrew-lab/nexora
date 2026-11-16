@@ -117,8 +117,8 @@
               <button class="btn" id="linkStudentsButton" type="button" style="width:100%;margin-top:9px;background:#0f766e;">Link selected students</button>
               <p id="linkStudentsMessage" style="font-size:.75rem;color:var(--text-secondary);"></p>
             </div>
-              </div>
-            </details>          </aside>
+            </details>
+          </aside>
         </div>
         <section class="card" style="margin-top:16px;">
           <h2 style="font-size:1.05rem;margin:0 0 8px;">This month's schedule</h2>
@@ -314,13 +314,27 @@
     async function initialiseCalendar(){
       if(!supabaseClient){$('calendarNotice').textContent='Supabase is not configured.';return;}
       const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
-      if(sessionError||!sessionData.session){$('calendarNotice').textContent='Please sign in to view your school calendar.';return;}
+      if(sessionError||!sessionData.session){
+        $('menuToggle').style.display='none';
+        $('aurawaySidebar').style.display='none';
+        $('menuBackdrop').style.display='none';
+        $('calendarNotice').textContent='Please sign in to view your school calendar.';
+        return;
+      }
       const {data,error}=await supabaseClient.rpc('pulse_calendar_my_context');
-      if(error){$('calendarNotice').textContent='Could not check school access: '+error.message;return;}
+      if(error){
+        $('menuToggle').style.display='none';
+        $('aurawaySidebar').style.display='none';
+        $('menuBackdrop').style.display='none';
+        $('calendarNotice').textContent='Could not check school access: '+error.message;
+        return;
+      }
       schoolContext=Array.isArray(data)&&data.length?data[0]:null;
       const email=sessionData.session.user.email?.toLowerCase();
       const appRole=sessionData.session.user.app_metadata?.role;
       const teacherIdentity=email==='teacher@auraway.app'||['teacher','school_admin'].includes(appRole);
+      // A school-linked teacher is detected by the server-authorized calendar context.
+      // The query string never grants teacher permissions or changes data access.
       const teacherPortal=teacherIdentity||(schoolContext?.can_manage===true);
       setCalendarPortalNav(teacherPortal);
       if(!schoolContext){
