@@ -245,7 +245,7 @@
       msg.textContent='School created. Loading calendar…';await initialiseCalendar();
     });
     async function initialiseCalendar(){
-      if(!window.supabaseClient){$('calendarNotice').textContent='Supabase is not configured.';return;}
+      if(!supabaseClient){$('calendarNotice').textContent='Supabase is not configured.';return;}
       const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
       if(sessionError||!sessionData.session){$('calendarNotice').textContent='Please sign in to view your school calendar.';return;}
       const {data,error}=await supabaseClient.rpc('pulse_calendar_my_context');
