@@ -164,13 +164,31 @@
       renderExams();
     }
 
+    function getExamTarget(dateStr) {
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateStr || '')) return null;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const target = new Date(year, month - 1, day);
+      return Number.isNaN(target.getTime()) ? null : target;
+    }
+
     function calculateDaysLeft(dateStr) {
+      const target = getExamTarget(dateStr);
+      if (!target) return -1;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const target = new Date(dateStr);
-      target.setHours(0, 0, 0, 0);
-      const diffTime = target - today;
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.round((target - today) / 86400000);
+    }
+
+    function formatExamCountdown(dateStr) {
+      const target = getExamTarget(dateStr);
+      if (!target) return 'Date unavailable';
+      const now = new Date();
+      const remaining = target.getTime() - now.getTime();
+      if (remaining <= 0) return 'Exam day';
+      const days = Math.floor(remaining / 86400000);
+      const hours = Math.floor((remaining % 86400000) / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      return days + 'd ' + hours + 'h ' + minutes + 'm left';
     }
 
     function renderExams() {
@@ -187,7 +205,7 @@
         const daysLeft = calculateDaysLeft(exam.date);
         const pct = Math.min(100, Math.round((exam.completedChapters / exam.totalChapters) * 100));
         
-        let badgeText = daysLeft > 1 ? `${daysLeft} Days Left` : daysLeft === 1 ? 'Tomorrow!' : daysLeft === 0 ? 'Today!' : 'Completed';
+        let badgeText = daysLeft >= 0 ? formatExamCountdown(exam.date) : 'Completed';
         let isUrgent = daysLeft >= 0 && daysLeft <= 5;
 
         const div = document.createElement('div');
