@@ -93,7 +93,7 @@
     const form = document.getElementById('dailyQuizForm');
 
     function showEligibility(profile) {
-      const match = String(profile?.class_name || '').match(/^\s*(\d{1,2})/);
+      const match = String(profile?.class_name || '').match(/(\d{1,2})/);
       const grade = match ? Number(match[1]) : 0;
       const info = document.getElementById('quizStudentInfo');
       if (grade < 5 || grade > 12) {
