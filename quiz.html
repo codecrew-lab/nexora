@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101426">
+  <title>PULSE — Daily Quiz Centre</title>
+  <link rel="stylesheet" href="style.css?v=20261116-academic">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="student-auth.js"></script>
+  <script src="portal-switcher.js" defer></script>
+  <style>
+    .quiz-wrap{max-width:1000px;margin:0 auto;padding:24px 16px}
+    .quiz-hero{padding:clamp(20px,3vw,30px);border:1px solid var(--border-color);border-radius:20px;background:linear-gradient(130deg,rgba(99,102,241,.14),rgba(16,185,129,.07)),var(--bg-card);margin-bottom:20px}
+    .quiz-subjects{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+    .quiz-subject{padding:16px;border:1px solid var(--border-color);border-radius:14px;background:var(--bg-card);text-align:left;color:var(--text-primary);cursor:pointer;transition:border-color .2s,transform .2s}
+    .quiz-subject:hover{border-color:var(--accent-primary);transform:translateY(-2px)}
+    .quiz-subject strong{display:block;font-size:1rem;margin-bottom:6px}
+    .quiz-subject small{color:var(--text-secondary)}
+    .quiz-question{padding:18px;border:1px solid var(--border-color);border-radius:14px;background:var(--bg-card);margin:12px 0}
+    .quiz-option{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--border-color);border-radius:10px;margin-top:8px;cursor:pointer}
+    .quiz-option:has(input:checked){border-color:var(--accent-primary);background:rgba(99,102,241,.08)}
+    .quiz-option input{margin-top:4px;accent-color:var(--accent-primary)}
+    .quiz-status{color:var(--text-secondary);font-size:.9rem}
+    @media(max-width:560px){.quiz-subjects{grid-template-columns:1fr 1fr}.quiz-subject{padding:13px}.quiz-wrap{padding:18px 12px}}
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
+    <div class="menu-backdrop" id="menuBackdrop" hidden></div>
+    <sidebar id="aurawaySidebar" aria-label="Student navigation">
+      <div class="logo-area">PULSE</div>
+      <nav class="student-nav-groups" aria-label="Student portal navigation">
+        <section class="student-nav-section"><h2>OVERVIEW</h2><ul><li><a href="index.html">📊 <span>Dashboard</span></a></li></ul></section>
+        <section class="student-nav-section"><h2>PLAN &amp; LEARN</h2><ul>
+          <li><a href="planner.html">📅 <span>Study Planner</span></a></li>
+          <li><a href="exam.html">🎯 <span>Exams</span></a></li>
+          <li><a href="quiz.html" aria-current="page">🧠 <span>Daily Quiz</span></a></li>
+          <li><a href="classroom.html">🎓 <span>Classroom</span></a></li>
+        </ul></section>
+      </nav>
+    </sidebar>
+    <main class="quiz-wrap">
+      <header class="header-bar" style="margin-bottom:20px">
+        <div class="welcome-title"><h1>Daily Quiz Centre 🧠</h1><p>Build your knowledge with short subject-wise practice.</p></div>
+        <button class="btn" id="themeToggle" type="button">Theme</button>
+      </header>
+      <section class="quiz-hero">
+        <span style="font-size:.7rem;font-weight:800;letter-spacing:.14em;color:var(--accent-primary)">PULSE LEARNING</span>
+        <h2 style="margin:7px 0">10 questions. One subject. Every day.</h2>
+        <p style="margin:0;color:var(--text-secondary)">Available for Standards 5–12. Complete each subject's daily quiz once; your score is saved securely.</p>
+      </section>
+      <section id="quizEligibility" class="card" style="margin-bottom:18px">
+        <p class="quiz-status" id="quizStudentInfo">Checking your student account…</p>
+      </section>
+      <section id="quizSubjectsSection" hidden>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px">
+          <h2 style="margin:0;font-size:1.1rem">Choose a subject</h2><span class="quiz-status">10 questions per subject daily</span>
+        </div>
+        <div class="quiz-subjects" id="quizSubjects"></div>
+      </section>
+      <section id="quizPanel" class="card" hidden style="margin-top:18px">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <div><p id="quizSubjectTitle" style="font-size:.75rem;font-weight:800;letter-spacing:.1em;color:var(--accent-primary);margin:0">SUBJECT</p><h2 style="margin:5px 0">Today's challenge</h2></div>
+          <span class="badge" id="quizProgress">10 questions</span>
+        </div>
+        <p id="quizMessage" class="quiz-status" role="status"></p>
+        <form id="dailyQuizForm"></form>
+        <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-top:16px">
+          <button type="button" class="btn" id="backToSubjects" style="background:var(--bg-secondary);color:var(--text-primary)">All subjects</button>
+          <button type="submit" form="dailyQuizForm" class="btn" id="submitQuiz">Submit answers</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const subjects = ['Mathematics','Science','English','Social Science','Malayalam','Computer Science'];
+    const subjectIcons = {'Mathematics':'➗','Science':'🔬','English':'📖','Social Science':'🌍','Malayalam':'അ','Computer Science':'💻'};
+    const themeToggle = document.getElementById('themeToggle');
+    const root = document.documentElement;
+    root.dataset.theme = localStorage.getItem('auraway_theme') || 'dark';
+    themeToggle.addEventListener('click', () => {
+      root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('auraway_theme', root.dataset.theme);
+    });
+    let activeSubject = '';
+    let activeQuestions = [];
+    const subjectsBox = document.getElementById('quizSubjects');
+    const panel = document.getElementById('quizPanel');
+    const message = document.getElementById('quizMessage');
+    const form = document.getElementById('dailyQuizForm');
+
+    function showEligibility(profile) {
+      const match = String(profile?.class_name || '').match(/^\s*(\d{1,2})/);
+      const grade = match ? Number(match[1]) : 0;
+      const info = document.getElementById('quizStudentInfo');
+      if (grade < 5 || grade > 12) {
+        info.textContent = 'Daily quizzes are available only for Standards 5 to 12. Your dashboard and other learning tools remain available.';
+        document.getElementById('quizSubjectsSection').hidden = true;
+        return;
+      }
+      info.textContent = 'Welcome, ' + (profile.student_name || 'student') + ' · Standard ' + grade + '. Choose a subject to begin.';
+      document.getElementById('quizSubjectsSection').hidden = false;
+      subjectsBox.replaceChildren();
+      subjects.forEach(subject => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'quiz-subject';
+        const title = document.createElement('strong'); title.textContent = subjectIcons[subject] + '  ' + subject;
+        const sub = document.createElement('small'); sub.textContent = '10 questions · Daily attempt';
+        button.append(title,sub);
+        button.addEventListener('click', () => startQuiz(subject));
+        subjectsBox.append(button);
+      });
+    }
+
+    async function startQuiz(subject) {
+      activeSubject = subject;
+      message.textContent = 'Loading your daily questions…';
+      panel.hidden = false;
+      document.getElementById('quizSubjectsSection').hidden = true;
+      document.getElementById('quizSubjectTitle').textContent = subject.toUpperCase();
+      form.replaceChildren();
+      document.getElementById('submitQuiz').disabled = true;
+      try {
+        const {data,error} = await supabaseClient.rpc('pulse_begin_daily_quiz',{p_subject:subject});
+        if (error) throw error;
+        if (data.status === 'completed') {
+          activeQuestions = [];
+          message.textContent = 'You have completed today’s ' + subject + ' quiz. Your score: ' + data.score + '/10. Come back tomorrow for a new daily attempt.';
+          document.getElementById('quizProgress').textContent = 'Completed';
+          document.getElementById('submitQuiz').hidden = true;
+          return;
+        }
+        activeQuestions = data.questions || [];
+        if (activeQuestions.length !== 10) throw new Error('The quiz could not load all 10 questions. Please try again.');
+        document.getElementById('quizProgress').textContent = '10 questions';
+        activeQuestions.forEach((question,index) => {
+          const card = document.createElement('article'); card.className = 'quiz-question';
+          const heading = document.createElement('h3'); heading.style.cssText='font-size:1rem;margin:0 0 12px'; heading.textContent = (index+1)+'. '+question.question;
+          card.append(heading);
+          question.options.forEach((option,optIndex) => {
+            const label = document.createElement('label'); label.className='quiz-option';
+            const radio = document.createElement('input'); radio.type='radio'; radio.name='q_'+question.id; radio.value=String(optIndex); radio.required=true;
+            const span = document.createElement('span'); span.textContent=option;
+            label.append(radio,span); card.append(label);
+          });
+          form.append(card);
+        });
+        message.textContent = 'Answer all 10 questions. You can resume this same quiz today if you leave before submitting.';
+        document.getElementById('submitQuiz').hidden = false;
+        document.getElementById('submitQuiz').disabled = false;
+      } catch (error) {
+        message.textContent = error.message || 'Could not load this quiz. Please try again.';
+        document.getElementById('submitQuiz').disabled = true;
+      }
+    }
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (activeQuestions.length !== 10) return;
+      const answers = {};
+      for (const q of activeQuestions) {
+        const selected = form.querySelector('input[name="q_'+q.id+'"]:checked');
+        if (!selected) { message.textContent = 'Please answer all 10 questions before submitting.'; return; }
+        answers[String(q.id)] = Number(selected.value);
+      }
+      const submit = document.getElementById('submitQuiz');
+      submit.disabled = true; message.textContent = 'Checking your answers…';
+      try {
+        const {data,error} = await supabaseClient.rpc('pulse_submit_daily_quiz',{p_subject:activeSubject,p_answers:answers});
+        if (error) throw error;
+        activeQuestions = [];
+        message.textContent = 'Quiz completed! You scored ' + data.score + '/10. Your result has been saved. Come back tomorrow for your next attempt.';
+        document.getElementById('quizProgress').textContent = 'Completed';
+        form.replaceChildren();
+        submit.hidden = true;
+      } catch (error) {
+        message.textContent = error.message || 'Your answers could not be submitted. Please retry.';
+        submit.disabled = false;
+      }
+    });
+
+    document.getElementById('backToSubjects').addEventListener('click', () => {
+      panel.hidden = true; document.getElementById('quizSubjectsSection').hidden = false;
+    });
+    window.addEventListener('pulseStudentReady', event => showEligibility(event.detail?.profile || window.PULSE_CURRENT_STUDENT));
+    if (window.PULSE_CURRENT_STUDENT) showEligibility(window.PULSE_CURRENT_STUDENT);
+    document.addEventListener('DOMContentLoaded', () => {
+      const menu=document.getElementById('themeToggle');
+    },{once:true});
+  </script>
+  <script src="navigation.js" defer></script>
+  <script src="back-navigation.js" defer></script>
+</body>
+</html>
