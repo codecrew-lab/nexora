@@ -11,6 +11,17 @@
   <script src="supabase.js"></script>
   <script src="portal-switcher.js" defer></script>
   <style>
+    .calendar-manager-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:16px;margin:0 0 16px}
+    .calendar-manager-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .calendar-manager-head h2{font-size:1rem;margin:0}
+    .calendar-form{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}
+    .calendar-form label:first-child{grid-column:span 2}
+    .calendar-form-actions,.calendar-form-message{grid-column:span 2}
+    .calendar-event-actions{display:flex;gap:6px;flex-shrink:0}
+    .calendar-event-actions .btn{padding:6px 9px;font-size:.75rem}
+    .calendar-tools-details{margin-top:14px;border-top:1px solid var(--border-color);padding-top:12px}
+    .calendar-tools-details summary{cursor:pointer;font-weight:700;font-size:.88rem}
+    @media(max-width:520px){.calendar-form{grid-template-columns:1fr}.calendar-form label:first-child,.calendar-form-actions,.calendar-form-message{grid-column:span 1}}
     .calendar-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.8fr);gap:16px;align-items:start}
     .calendar-panel,.calendar-side{background:var(--bg-card);border:1px solid var(--border-color);border-radius:18px;padding:16px;min-width:0}
     .calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
@@ -74,6 +85,21 @@
           <div class="calendar-stat"><small>Working days (Mon–Fri)</small><strong id="workingCount">0</strong></div>
           <div class="calendar-stat"><small>Academic events</small><strong id="eventCount">0</strong></div>
         </div>
+        <section id="calendarManager" class="calendar-manager-card" style="display:none;">
+          <div class="calendar-manager-head">
+            <div><h2 id="calendarFormTitle">＋ Add a calendar item</h2><p style="margin:4px 0 0;color:var(--text-secondary);font-size:.78rem;">Add or update a holiday, working day, exam or school event.</p></div>
+            <button class="btn" id="calendarCancelEdit" type="button" style="background:#64748b;">Clear form</button>
+          </div>
+          <form id="calendarEventForm" class="calendar-form">
+            <input type="hidden" id="calendarEventId">
+            <label>What is happening?<input id="calendarEventName" maxlength="120" required placeholder="e.g. Onam Holiday"></label>
+            <label>Date<input id="calendarEventDate" type="date" required></label>
+            <label>Category<select id="calendarEventType"><option value="holiday">Holiday</option><option value="working_day">Working day</option><option value="event">School event</option><option value="exam">Examination</option></select></label>
+            <label style="grid-column:span 2;">Note for students (optional)<textarea id="calendarEventDescription" rows="2" maxlength="500" placeholder="Add a short note"></textarea></label>
+            <div class="calendar-form-actions"><button class="btn" id="calendarSaveButton" type="submit">Save calendar item</button></div>
+            <p id="calendarFormMessage" class="calendar-form-message" role="status" style="font-size:.78rem;color:var(--text-secondary);margin:0;"></p>
+          </form>
+        </section>
         <div class="calendar-layout">
           <section class="calendar-panel">
             <div class="calendar-toolbar">
@@ -91,24 +117,14 @@
             <h2 style="font-size:1.05rem;margin:0;">Selected date</h2>
             <p id="selectedDateLabel" style="color:var(--text-secondary);font-size:.82rem;margin:5px 0 12px;">Choose a date on the calendar.</p>
             <div id="selectedDateEvents"><p class="calendar-empty">No date selected.</p></div>
-            <div id="calendarManager" style="display:none;margin-top:16px;border-top:1px solid var(--border-color);padding-top:14px;">
-              <h3 id="calendarFormTitle" style="margin:0;">＋ Add calendar entry</h3>
-              <form id="calendarEventForm" class="calendar-form">
-                <input type="hidden" id="calendarEventId">
-                <label>Title<input id="calendarEventName" maxlength="120" required placeholder="e.g. Onam Holiday"></label>
-                <label>Date<input id="calendarEventDate" type="date" required></label>
-                <label>Type<select id="calendarEventType"><option value="holiday">Holiday</option><option value="working_day">Working day</option><option value="event">School event</option><option value="exam">Examination</option></select></label>
-                <label>Details (optional)<textarea id="calendarEventDescription" rows="2" maxlength="500" placeholder="Short note for students and staff"></textarea></label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" id="calendarSaveButton" type="submit">Save entry</button><button class="btn" id="calendarCancelEdit" type="button" style="background:#64748b;">Clear</button></div>
-                <p id="calendarFormMessage" role="status" style="font-size:.78rem;color:var(--text-secondary);margin:0;"></p>
-              </form>
-            </div>
             <div id="calendarStaffTools" style="display:none;margin-top:14px;">
-              <h3 style="font-size:.95rem;margin:0 0 7px;">Connect student accounts</h3>
-              <p style="font-size:.76rem;color:var(--text-secondary);margin:0 0 8px;">Choose which unassigned student profiles belong to this school. Profiles already linked to another school are not shown.</p>
-              <div id="unassignedStudentsList" style="max-height:220px;overflow:auto;"><p class="calendar-empty">Loading student list…</p></div>
-              <button class="btn" id="linkStudentsButton" type="button" style="width:100%;margin-top:9px;background:#0f766e;">Link selected students</button>
-              <p id="linkStudentsMessage" style="font-size:.75rem;color:var(--text-secondary);"></p>
+              <details class="calendar-tools-details">
+                <summary>Student account setup</summary>
+                <p style="font-size:.76rem;color:var(--text-secondary);margin:9px 0;">Choose unassigned student profiles that belong to this school.</p>
+                <div id="unassignedStudentsList" style="max-height:220px;overflow:auto;"><p class="calendar-empty">Loading student list…</p></div>
+                <button class="btn" id="linkStudentsButton" type="button" style="width:100%;margin-top:9px;background:#0f766e;">Link selected students</button>
+                <p id="linkStudentsMessage" style="font-size:.75rem;color:var(--text-secondary);"></p>
+              </details>
             </div>
           </aside>
         </div>
@@ -200,10 +216,9 @@
         const left=document.createElement('div');const title=document.createElement('strong');title.textContent=event.title;const type=document.createElement('div');type.className='calendar-event-type';type.textContent=typeLabels[event.event_type]||event.event_type;left.append(title,type);
         head.append(left);card.append(head);
         if(event.description){const desc=document.createElement('p');desc.textContent=event.description;desc.style.cssText='font-size:.8rem;color:var(--text-secondary);margin:7px 0 0;';card.append(desc);}
-        if(schoolContext?.can_manage){const actions=document.createElement('div');actions.style.cssText='display:flex;gap:7px;margin-top:9px;';
-          const edit=document.createElement('button');edit.type='button';edit.className='btn';edit.textContent='Edit';edit.style.cssText='padding:5px 9px;font-size:.75rem;';
-          edit.addEventListener('click',()=>fillEventForm(event));
-          const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='Delete';del.style.cssText='padding:5px 9px;font-size:.75rem;background:#b91c1c;';
+        if(schoolContext?.can_manage){const actions=document.createElement('div');actions.className='calendar-event-actions';
+          const edit=document.createElement('button');edit.type='button';edit.className='btn';edit.textContent='Edit';edit.addEventListener('click',()=>fillEventForm(event));
+          const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='Delete';del.style.background='#b91c1c';
           del.addEventListener('click',()=>deleteCalendarEvent(event.id));actions.append(edit,del);card.append(actions);
         }
         box.append(card);
@@ -221,10 +236,10 @@
     }
     function fillEventForm(event){
       $('calendarEventId').value=event.id;$('calendarEventName').value=event.title;$('calendarEventDate').value=event.event_date;$('calendarEventType').value=event.event_type;$('calendarEventDescription').value=event.description||'';
-      $('calendarFormTitle').textContent='Edit calendar entry';$('calendarSaveButton').textContent='Update entry';$('calendarFormMessage').textContent='';
-      $('calendarEventName').focus();
+      $('calendarFormTitle').textContent='Editing calendar item';$('calendarSaveButton').textContent='Update calendar item';$('calendarFormMessage').textContent='';
+      $('calendarManager').scrollIntoView({behavior:'smooth',block:'center'});$('calendarEventName').focus({preventScroll:true});
     }
-    function resetEventForm(){ $('calendarEventForm').reset();$('calendarEventId').value='';$('calendarEventDate').value=isoDate(selectedDate);$('calendarFormTitle').textContent='＋ Add calendar entry';$('calendarSaveButton').textContent='Save entry';$('calendarFormMessage').textContent='';}
+    function resetEventForm(){ $('calendarEventForm').reset();$('calendarEventId').value='';$('calendarEventDate').value=isoDate(selectedDate);$('calendarFormTitle').textContent='＋ Add a calendar item';$('calendarSaveButton').textContent='Save calendar item';$('calendarFormMessage').textContent='';}
     async function deleteCalendarEvent(id){
       if(!confirm('Delete this calendar entry?'))return;
       const {error}=await supabaseClient.from('academic_calendar_events').delete().eq('id',id);
@@ -241,8 +256,8 @@
       resetEventForm();await loadCalendar();
     });
     $('calendarCancelEdit').addEventListener('click',resetEventForm);
-    $('prevMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()-1);loadCalendar();});
-    $('nextMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()+1);loadCalendar();});
+    $('prevMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()-1);selectedDate=new Date(monthCursor);loadCalendar();});
+    $('nextMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()+1);selectedDate=new Date(monthCursor);loadCalendar();});
     $('todayMonth').addEventListener('click',()=>{monthCursor.setFullYear(new Date().getFullYear(),new Date().getMonth(),1);selectedDate=new Date();selectedDate.setHours(0,0,0,0);loadCalendar();});
     async function loadUnassignedStudents(){
       const box=$('unassignedStudentsList');
