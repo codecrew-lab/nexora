@@ -107,6 +107,12 @@
         <button class="btn student-theme-toggle" id="themeToggle" type="button" aria-label="Switch between dark and light theme">☀ Switch theme</button>
       </div>
 
+      <section class="card" id="examCountdownSection" aria-live="polite" style="margin-bottom:24px;display:block!important;visibility:visible!important;">
+        <h3>Next Exam 🎯</h3>
+        <p id="dashExamName" style="font-weight: 700; margin-top: 8px;">No upcoming exams scheduled</p>
+        <p id="dashExamCountdown" style="color: var(--text-secondary); font-size: 0.9rem;">Add an exam in the Exams section to see your countdown.</p>
+      </section>
+
       <section class="card pulse-school-snapshot" aria-labelledby="schoolSnapshotTitle">
         <div style="grid-column:1/-1;">
           <div class="snapshot-heading">
@@ -195,11 +201,7 @@
         </div>
       </section>
 
-      <section class="card" id="examCountdownSection" aria-live="polite" style="margin-bottom:24px;display:block!important;visibility:visible!important;">
-        <h3>Next Exam 🎯</h3>
-        <p id="dashExamName" style="font-weight: 700; margin-top: 8px;">No upcoming exams scheduled</p>
-        <p id="dashExamCountdown" style="color: var(--text-secondary); font-size: 0.9rem;">Add an exam in the Exams section to see your countdown.</p>
-      </section>
+
 
       <!-- Today's Real Tasks & Quick Actions -->
       <div class="grid-cards" id="tasksQuickSection" style="grid-template-columns: 2fr 1fr;">
