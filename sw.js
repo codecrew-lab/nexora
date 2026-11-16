@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pulse-pwa-v11';
+const CACHE_NAME = 'pulse-pwa-v12';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS_TO_CACHE = [
   './planner.html',
   './timetable.html',
   './exam.html',
+  './quiz.html',
   './marks.html',
   './attendance.html',
   './flashcards.html',
