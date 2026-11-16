@@ -71,7 +71,7 @@
       <section id="calendarWorkspace" style="display:none;">
         <div class="calendar-stats">
           <div class="calendar-stat"><small>Holidays this month</small><strong id="holidayCount">0</strong></div>
-          <div class="calendar-stat"><small>Working days marked</small><strong id="workingCount">0</strong></div>
+          <div class="calendar-stat"><small>Working days (Mon–Fri)</small><strong id="workingCount">0</strong></div>
           <div class="calendar-stat"><small>Academic events</small><strong id="eventCount">0</strong></div>
         </div>
         <div class="calendar-layout">
@@ -104,7 +104,10 @@
               </form>
             </div>
             <div id="calendarStaffTools" style="display:none;margin-top:14px;">
-              <button class="btn" id="linkStudentsButton" type="button" style="width:100%;background:#0f766e;">Link unassigned students to this school</button>
+              <h3 style="font-size:.95rem;margin:0 0 7px;">Connect student accounts</h3>
+              <p style="font-size:.76rem;color:var(--text-secondary);margin:0 0 8px;">Choose which unassigned student profiles belong to this school. Profiles already linked to another school are not shown.</p>
+              <div id="unassignedStudentsList" style="max-height:220px;overflow:auto;"><p class="calendar-empty">Loading student list…</p></div>
+              <button class="btn" id="linkStudentsButton" type="button" style="width:100%;margin-top:9px;background:#0f766e;">Link selected students</button>
               <p id="linkStudentsMessage" style="font-size:.75rem;color:var(--text-secondary);"></p>
             </div>
           </aside>
@@ -175,7 +178,15 @@
         grid.append(button);
       }
       const holidays=calendarEvents.filter(e=>e.event_type==='holiday').length;
-      const working=calendarEvents.filter(e=>e.event_type==='working_day').length;
+      const monthDays=new Date(monthCursor.getFullYear(),monthCursor.getMonth()+1,0).getDate();
+      let working=0;
+      for(let day=1;day<=monthDays;day++){
+        const date=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),day);
+        const keyDate=isoDate(date);
+        const dayEntries=calendarEvents.filter(e=>e.event_date===keyDate);
+        if(dayEntries.some(e=>e.event_type==='holiday'))continue;
+        if(dayEntries.some(e=>e.event_type==='working_day')||(date.getDay()!==0&&date.getDay()!==6))working++;
+      }
       const academic=calendarEvents.filter(e=>e.event_type==='event'||e.event_type==='exam').length;
       $('holidayCount').textContent=holidays;$('workingCount').textContent=working;$('eventCount').textContent=academic;
       renderSelectedDate();renderMonthEvents();
@@ -233,10 +244,27 @@
     $('prevMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()-1);loadCalendar();});
     $('nextMonth').addEventListener('click',()=>{monthCursor.setMonth(monthCursor.getMonth()+1);loadCalendar();});
     $('todayMonth').addEventListener('click',()=>{monthCursor.setFullYear(new Date().getFullYear(),new Date().getMonth(),1);selectedDate=new Date();selectedDate.setHours(0,0,0,0);loadCalendar();});
+    async function loadUnassignedStudents(){
+      const box=$('unassignedStudentsList');
+      const {data,error}=await supabaseClient.rpc('pulse_calendar_list_unassigned_students');
+      box.replaceChildren();
+      if(error){box.textContent='Could not load student list: '+error.message;return;}
+      if(!data?.length){const empty=document.createElement('p');empty.className='calendar-empty';empty.textContent='All available student profiles are already linked to a school.';box.append(empty);return;}
+      data.forEach(student=>{
+        const label=document.createElement('label');
+        label.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--border-color);font-size:.8rem;color:var(--text-primary);';
+        const check=document.createElement('input');check.type='checkbox';check.value=student.id;check.className='calendar-student-check';
+        const detail=document.createElement('span');detail.textContent=student.student_name+' · '+student.class_name+' · '+student.student_code;
+        label.append(check,detail);box.append(label);
+      });
+    }
     $('linkStudentsButton').addEventListener('click',async()=>{
-      const btn=$('linkStudentsButton');btn.disabled=true;$('linkStudentsMessage').textContent='Linking students…';
-      const {data,error}=await supabaseClient.rpc('pulse_calendar_link_unassigned_students');
+      const ids=[...document.querySelectorAll('.calendar-student-check:checked')].map(input=>Number(input.value));
+      if(!ids.length){$('linkStudentsMessage').textContent='Select at least one student first.';return;}
+      const btn=$('linkStudentsButton');btn.disabled=true;$('linkStudentsMessage').textContent='Linking selected students…';
+      const {data,error}=await supabaseClient.rpc('pulse_calendar_link_unassigned_students',{p_student_ids:ids});
       btn.disabled=false;$('linkStudentsMessage').textContent=error?'Could not link students: '+error.message:(data||0)+' student profiles linked to this school.';
+      await loadUnassignedStudents();
     });
     $('createSchoolForm').addEventListener('submit',async e=>{
       e.preventDefault();const msg=$('createSchoolMessage');msg.textContent='Creating school…';
@@ -261,6 +289,7 @@
       $('calendarSchoolSubtitle').textContent=schoolContext.school_name+' · School academic calendar';
       $('calendarManager').style.display=schoolContext.can_manage?'block':'none';
       $('calendarStaffTools').style.display=schoolContext.can_manage?'block':'none';
+      if(schoolContext.can_manage) await loadUnassignedStudents();
       $('calendarWorkspace').style.display='block';resetEventForm();await loadCalendar();
     }
     initialiseCalendar();
