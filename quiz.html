@@ -11,6 +11,10 @@
   <script src="student-auth.js"></script>
   <script src="portal-switcher.js" defer></script>
   <style>
+    .student-nav-section{margin:0 0 22px}
+    .student-nav-section h2{margin:0 8px 10px;font-size:.78rem;letter-spacing:.1em;color:var(--text-secondary)}
+    .student-nav-section .nav-links{list-style:none;padding:0;margin:0}
+    .student-nav-section .nav-links a{width:100%}
     .quiz-wrap{max-width:1000px;margin:0 auto;padding:24px 16px}
     .quiz-hero{padding:clamp(20px,3vw,30px);border:1px solid var(--border-color);border-radius:20px;background:linear-gradient(130deg,rgba(99,102,241,.14),rgba(16,185,129,.07)),var(--bg-card);margin-bottom:20px}
     .quiz-subjects{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
@@ -32,14 +36,20 @@
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <sidebar id="aurawaySidebar" aria-label="Student navigation">
       <div class="logo-area">PULSE</div>
-      <nav class="student-nav-groups" aria-label="Student portal navigation">
-        <section class="student-nav-section"><h2>OVERVIEW</h2><ul><li><a href="index.html">📊 <span>Dashboard</span></a></li></ul></section>
-        <section class="student-nav-section"><h2>PLAN &amp; LEARN</h2><ul>
-          <li><a href="planner.html">📅 <span>Study Planner</span></a></li>
-          <li><a href="exam.html">🎯 <span>Exams</span></a></li>
-          <li><a href="quiz.html" aria-current="page">🧠 <span>Daily Quiz</span></a></li>
-          <li><a href="classroom.html">🎓 <span>Classroom</span></a></li>
-        </ul></section>
+      <nav aria-label="Student portal navigation">
+        <div class="student-nav-section">
+          <h2>OVERVIEW</h2>
+          <ul class="nav-links"><li><a href="index.html">📊 <span>Dashboard</span></a></li></ul>
+        </div>
+        <div class="student-nav-section">
+          <h2>PLAN &amp; LEARN</h2>
+          <ul class="nav-links">
+            <li><a href="planner.html">📅 <span>Study Planner</span></a></li>
+            <li><a href="exam.html">🎯 <span>Exams</span></a></li>
+            <li><a href="quiz.html" class="active" aria-current="page">🧠 <span>Daily Quiz</span></a></li>
+            <li><a href="classroom.html">🎓 <span>Classroom</span></a></li>
+          </ul>
+        </div>
       </nav>
     </sidebar>
     <main class="quiz-wrap">
@@ -187,9 +197,13 @@
     });
     window.addEventListener('pulseStudentReady', event => showEligibility(event.detail?.profile || window.PULSE_CURRENT_STUDENT));
     if (window.PULSE_CURRENT_STUDENT) showEligibility(window.PULSE_CURRENT_STUDENT);
-    document.addEventListener('DOMContentLoaded', () => {
-      const menu=document.getElementById('themeToggle');
-    },{once:true});
+    // The shared drawer closes immediately after a navigation choice on mobile.
+    document.querySelectorAll('#aurawaySidebar a[href]').forEach(link => {
+      link.addEventListener('click', () => {
+        document.body.classList.remove('sidebar-open');
+        document.getElementById('menuToggle')?.setAttribute('aria-expanded','false');
+      });
+    });
   </script>
   <script src="navigation.js" defer></script>
   <script src="back-navigation.js" defer></script>
