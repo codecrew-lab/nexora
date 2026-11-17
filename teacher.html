@@ -264,7 +264,7 @@
     <!-- Teacher Attendance Manager -->
     <div class="card" style="margin-bottom:20px;" id="teacherAttendanceManager">
       <h3>📋 Class Attendance Manager</h3>
-      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date, mark each student, then save the register.</p>
+      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date to mark attendance. Existing records have an individual delete control; deleting one record never deletes a student's profile or other attendance.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
         <select id="attendanceClassSelect" class="input-field"><option value="">Select class</option></select>
         <input id="attendanceDateInput" class="input-field" type="date">
@@ -692,7 +692,8 @@
       const date = document.getElementById('attendanceDateInput').value;
       const roster = document.getElementById('teacherAttendanceRoster');
       const saveButton = document.getElementById('saveClassAttendance');
-      document.getElementById('attendanceSaveMessage').textContent = '';
+      const message = document.getElementById('attendanceSaveMessage');
+      message.textContent = '';
       if (!className || !date) {
         roster.textContent = 'Choose both a class and date.';
         saveButton.style.display = 'none';
@@ -706,15 +707,16 @@
       }
       const codes = students.map(student => student.student_code);
       const { data: records, error } = await supabaseClient.from('attendance_records')
-        .select('student_code,status').eq('attendance_date', date).in('student_code', codes);
+        .select('id,student_code,status').eq('attendance_date', date).in('student_code', codes);
       if (error) {
-        roster.textContent = 'Could not load attendance. Run the attendance SQL setup in Supabase first. ' + error.message;
+        roster.textContent = 'Could not load attendance. ' + error.message;
         saveButton.style.display = 'none';
         return;
       }
-      const existing = new Map((records || []).map(record => [record.student_code, record.status]));
+      const existing = new Map((records || []).map(record => [record.student_code, record]));
       roster.innerHTML = '';
       students.forEach(student => {
+        const record = existing.get(student.student_code);
         const row = document.createElement('div');
         row.className = 'student-row';
         const info = document.createElement('div');
@@ -724,6 +726,8 @@
         code.textContent = student.student_code;
         code.style.color = 'var(--text-secondary)';
         info.append(name, document.createElement('br'), code);
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
         const select = document.createElement('select');
         select.className = 'input-field attendance-status-select';
         select.dataset.studentCode = student.student_code;
@@ -734,11 +738,60 @@
           option.textContent = status === 'Present' ? 'Present ✅' : status === 'Absent' ? 'Absent ❌' : 'Leave 📝';
           select.appendChild(option);
         });
-        select.value = existing.get(student.student_code) || 'Present';
-        row.append(info, select);
+        select.value = record?.status || 'Present';
+        actions.appendChild(select);
+
+        if (record?.id) {
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'button';
+          deleteButton.className = 'btn';
+          deleteButton.textContent = 'Delete record';
+          deleteButton.style.cssText = 'background:#b91c1c;padding:8px 11px;';
+          deleteButton.addEventListener('click', () => deleteAttendanceRecord(
+            record.id,
+            student.student_name,
+            student.student_code,
+            date,
+            deleteButton
+          ));
+          actions.appendChild(deleteButton);
+        }
+        row.append(info, actions);
         roster.appendChild(row);
       });
       saveButton.style.display = 'inline-flex';
+    }
+
+    async function deleteAttendanceRecord(recordId, studentName, studentCode, attendanceDate, button) {
+      const confirmed = window.confirm(
+        'Delete only this attendance record?\n\nStudent: ' + studentName +
+        '\nCode: ' + studentCode + '\nDate: ' + attendanceDate +
+        '\n\nThe student profile and all other dates will remain unchanged.'
+      );
+      if (!confirmed) return;
+
+      const message = document.getElementById('attendanceSaveMessage');
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      const { data, error } = await supabaseClient
+        .from('attendance_records')
+        .delete()
+        .eq('id', recordId)
+        .select('id');
+
+      if (error || !data?.length) {
+        button.disabled = false;
+        button.textContent = 'Delete record';
+        message.style.color = '#ef4444';
+        message.textContent = error
+          ? 'Delete failed. Only an authorised teacher can delete attendance. ' + error.message
+          : 'This record was not deleted. Check teacher permissions or refresh the register.';
+        return;
+      }
+
+      message.style.color = '#10b981';
+      message.textContent = 'One attendance record deleted. Student profile and other dates were not changed.';
+      await loadAttendanceRoster();
     }
 
     async function saveClassAttendance() {
@@ -765,6 +818,7 @@
       }
       message.style.color = '#10b981';
       message.textContent = 'Attendance saved for ' + records.length + ' students.';
+      await loadAttendanceRoster();
       loadStudentsRoster();
     }
 
@@ -772,7 +826,7 @@
     document.getElementById('loadAttendanceClass').addEventListener('click', loadAttendanceRoster);
     document.getElementById('saveClassAttendance').addEventListener('click', saveClassAttendance);
 
-    async function loadAssignmentOverview() {
+        async function loadAssignmentOverview() {
       const container = document.getElementById('teacherAssignmentOverview');
       const [{ data: assignments, error: assignmentError }, { data: updates, error: updatesError }] = await Promise.all([
         supabaseClient.from('assignments').select('*').order('due_date', { ascending: true }),
