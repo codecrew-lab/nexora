@@ -1352,7 +1352,7 @@
   form.addEventListener('submit',async e=>{
     e.preventDefault();
     const {data:sessionData}=await supabaseClient.auth.getSession();const session=sessionData?.session;
-    if(!session||session.user.email?.toLowerCase()!=='teacher@auraway.app'){message('Teacher sign-in required. Students and parents cannot edit.',true);return}
+    if(!session||!(session.user.email?.toLowerCase()==='teacher@auraway.app'||['teacher','school_admin'].includes(session.user.app_metadata?.role))){message('Teacher sign-in required. Students and parents cannot edit.',true);return}
     const day=el('ttTeacherDay').value,start=el('ttTeacherStart').value,end=el('ttTeacherEnd').value;
     if(end<=start){message('End time must be later than start time.',true);return}
     const startMin=Number(start.slice(0,2))*60+Number(start.slice(3)),endMin=Number(end.slice(0,2))*60+Number(end.slice(3));
@@ -1365,7 +1365,7 @@
   });
   el('ttTeacherCancel').addEventListener('click',resetForm);
   el('refreshTeacherTimetable').addEventListener('click',load);
-  async function init(){const {data,error}=await supabaseClient.auth.getSession();const s=data?.session;if(error||s?.user?.email?.toLowerCase()!=='teacher@auraway.app'){message('Sign in with the authorised teacher account to manage the timetable.',true);form.querySelectorAll('input,select,button').forEach(x=>x.disabled=true);return}teacherUserId=s.user.id;await load()}
+  async function init(){const {data,error}=await supabaseClient.auth.getSession();const s=data?.session;if(error||!(s?.user?.email?.toLowerCase()==='teacher@auraway.app'||['teacher','school_admin'].includes(s?.user?.app_metadata?.role))){message('Sign in with the authorised teacher account to manage the timetable.',true);form.querySelectorAll('input,select,button').forEach(x=>x.disabled=true);return}teacherUserId=s.user.id;await load()}
   document.addEventListener('DOMContentLoaded',init,{once:true});
   if(document.readyState!=='loading')init();
 })();
