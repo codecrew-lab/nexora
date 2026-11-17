@@ -168,6 +168,22 @@
         'You have signed out. Enter a student code to continue.';
     }
 
+    function attendanceTimeDetails(record) {
+      if (!record?.created_at) return '';
+      const instant = new Date(record.created_at);
+      if (Number.isNaN(instant.getTime())) return '';
+      const displayTime = instant.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
+      });
+      if (record.marked_by == null && record.status === 'Present') {
+        const clock = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).format(instant);
+        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
+      }
+      return 'Recorded: ' + displayTime;
+    }
+
     async function loadParentView(codeOverride) {
       const input = document.getElementById('parentCodeInput');
       const code = String(codeOverride || input.value).trim().toUpperCase();
@@ -216,6 +232,13 @@
             status.style.fontWeight = '700';
             status.style.color = String(row.status).toLowerCase() === 'present' ? '#10b981' : String(row.status).toLowerCase() === 'absent' ? '#ef4444' : '#f59e0b';
             line.append(date, status);
+            const timingText = attendanceTimeDetails(row);
+            if (timingText) {
+              const timing = document.createElement('small');
+              timing.textContent = timingText;
+              timing.style.cssText = 'display:block;flex-basis:100%;margin-top:4px;color:var(--text-secondary);font-size:.78rem;';
+              line.appendChild(timing);
+            }
             attendanceBox.appendChild(line);
           });
         }

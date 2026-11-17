@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
 
     const [{ data: attendance, error: attendanceError }, { data: assignments, error: assignmentsError }, { data: updates, error: updatesError }, { data: timetable, error: timetableError }] = await Promise.all([
       admin.from("attendance_records")
-        .select("attendance_date,status")
+        .select("attendance_date,status,created_at,marked_by")
         .eq("student_code", code)
         .order("attendance_date", { ascending: false })
         .limit(365),
