@@ -764,9 +764,9 @@
 
     async function deleteAttendanceRecord(recordId, studentName, studentCode, attendanceDate, button) {
       const confirmed = window.confirm(
-        'Delete only this attendance record?\\n\\nStudent: ' + studentName +
-        '\\nCode: ' + studentCode + '\\nDate: ' + attendanceDate +
-        '\\n\\nThe student profile and all other dates will remain unchanged.'
+        'Delete only this attendance record?\n\nStudent: ' + studentName +
+        '\nCode: ' + studentCode + '\nDate: ' + attendanceDate +
+        '\n\nThe student profile and all other dates will remain unchanged.'
       );
       if (!confirmed) return;
 
