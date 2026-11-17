@@ -11,6 +11,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css?v=20261114-nav2">
   <script src="pwa-installer.js" defer></script>
+  <script src="portal-switcher.js" defer></script>
   <style>
     .pulse-school-snapshot{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 24px}
     .pulse-school-snapshot .snapshot-item{min-width:0;padding:14px 16px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary)}
@@ -19,7 +20,25 @@
     .pulse-school-snapshot .snapshot-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
     .pulse-school-snapshot .snapshot-link{color:var(--accent-primary);font-weight:650;text-decoration:none}
     .pulse-school-snapshot .snapshot-link:hover{text-decoration:underline}
-  </style>
+      /* High-visibility exam countdown */
+    .pulse-exam-focus{position:relative;overflow:hidden;padding:clamp(20px,4vw,32px);border:1px solid rgba(99,102,241,.38);background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.22),transparent 48%),linear-gradient(125deg,rgba(30,41,75,.98),rgba(15,23,42,.98));box-shadow:0 16px 42px rgba(15,23,42,.18)}
+    [data-theme="light"] .pulse-exam-focus{background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.14),transparent 48%),linear-gradient(125deg,#eef2ff,#fff);border-color:rgba(79,70,229,.25)}
+    .pulse-exam-focus-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .pulse-exam-eyebrow{font-size:.7rem;font-weight:850;letter-spacing:.18em;color:#a5b4fc}
+    .pulse-exam-focus h2{font-size:clamp(1.2rem,3vw,1.65rem);font-weight:850;margin:5px 0 0}
+    .pulse-exam-manage{font-size:.8rem;font-weight:750;color:#a5b4fc;text-decoration:none;padding:9px 12px;border:1px solid rgba(165,180,252,.32);border-radius:10px}
+    .pulse-exam-name{font-size:clamp(1.15rem,3vw,1.55rem);font-weight:850;margin:20px 0 12px;letter-spacing:-.02em}
+    .pulse-exam-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:620px}
+    .pulse-exam-count-unit{min-width:0;padding:clamp(12px,3vw,20px) 8px;text-align:center;border:1px solid rgba(165,180,252,.24);border-radius:16px;background:rgba(99,102,241,.12)}
+    .pulse-exam-count-unit strong{display:block;font-size:clamp(2.25rem,9vw,4.5rem);line-height:1.02;font-weight:950;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:#fff}
+    [data-theme="light"] .pulse-exam-count-unit strong{color:#1e1b4b}
+    .pulse-exam-count-unit span{display:block;margin-top:8px;font-size:.68rem;font-weight:850;letter-spacing:.16em;color:#c7d2fe}
+    [data-theme="light"] .pulse-exam-count-unit span{color:#4338ca}
+    .pulse-exam-date{font-size:.88rem;font-weight:650;color:#cbd5e1;margin:14px 0 0}
+    [data-theme="light"] .pulse-exam-date{color:#475569}
+    @media(max-width:420px){.pulse-exam-focus{padding:17px}.pulse-exam-count-grid{gap:6px}.pulse-exam-count-unit{border-radius:12px}.pulse-exam-count-unit strong{font-size:clamp(2rem,12vw,3.1rem)}.pulse-exam-count-unit span{font-size:.58rem}}
+
+</style>
 </head>
 <body class="pulse-student-portal">
   <div class="app-container">
@@ -77,7 +96,7 @@
           <li><a href="planner.html">📅 <span>Study Planner</span></a></li>
           <li><a href="timetable.html">🗓️ <span>Timetable</span></a></li>
           <li><a href="exam.html">🎯 <span>Exams</span></a></li>
-          <li><a href="marks.html">📈 <span>Marks Manager</span></a></li>
+          <li><a href="quiz.html">🧠 <span>Daily Quiz</span></a></li>          <li><a href="marks.html">📈 <span>Marks Manager</span></a></li>
           <li><a href="attendance.html">📋 <span>Attendance</span></a></li>
           <li><a href="flashcards.html">🗂️ <span>Flashcards</span></a></li>
           <li><a href="classroom.html">🎓 <span>Classroom</span></a></li>
@@ -105,6 +124,20 @@
         <button class="btn student-theme-toggle" id="themeToggle" type="button" aria-label="Switch between dark and light theme">☀ Switch theme</button>
       </div>
 
+      <section class="card pulse-exam-focus" id="examCountdownSection" aria-live="polite" style="margin-bottom:24px;display:block!important;visibility:visible!important;">
+        <div class="pulse-exam-focus-top">
+          <div><span class="pulse-exam-eyebrow">YOUR NEXT EXAM</span><h2>Exam Countdown 🎯</h2></div>
+          <a class="pulse-exam-manage" href="exam.html">Manage exams ↗</a>
+        </div>
+        <p id="dashExamName" class="pulse-exam-name">No upcoming exams scheduled</p>
+        <div class="pulse-exam-count-grid" aria-label="Time remaining until next exam">
+          <div class="pulse-exam-count-unit"><strong id="dashExamDays">--</strong><span>DAYS</span></div>
+          <div class="pulse-exam-count-unit"><strong id="dashExamHours">--</strong><span>HOURS</span></div>
+          <div class="pulse-exam-count-unit"><strong id="dashExamMinutes">--</strong><span>MINUTES</span></div>
+        </div>
+        <p id="dashExamCountdown" class="pulse-exam-date">Add an exam in the Exams section to see your countdown.</p>
+      </section>
+
       <section class="card pulse-school-snapshot" aria-labelledby="schoolSnapshotTitle">
         <div style="grid-column:1/-1;">
           <div class="snapshot-heading">
@@ -120,6 +153,21 @@
             <div class="snapshot-item"><span class="snapshot-label">Study hours on profile</span><span class="snapshot-value" id="snapshotStudyHours">—</span></div>
           </div>
         </div>
+      </section>
+
+      <section class="card" id="pulseSiblingAccounts" aria-labelledby="pulseSiblingHeading" style="margin:16px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div><h2 id="pulseSiblingHeading" style="font-size:1.05rem;margin:0;">👨‍👩‍👧 My Siblings</h2><p style="color:var(--text-secondary);font-size:.82rem;margin:4px 0 0;">Link a sibling using their student code and password. Your school data stays separate.</p></div>
+          <button type="button" class="btn" onclick="pulseLoadSiblingAccounts()">Refresh</button>
+        </div>
+        <form data-sibling-link-form style="display:grid;gap:10px;margin-top:14px;padding:14px;border:1px solid var(--border-color);border-radius:12px;">
+          <strong>＋ Add a sibling</strong>
+          <label>Sibling student code<input name="code" required autocomplete="username" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label>
+          <label>Sibling password<input name="password" type="password" required autocomplete="current-password" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:5px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);"></label>
+          <p data-switch-message role="status" style="margin:0;color:var(--text-secondary);font-size:.85rem;">Your sibling's own login verifies and approves the link. Passwords are not saved.</p>
+          <button class="btn" type="submit">Verify & link sibling</button>
+        </form>
+        <div data-sibling-list style="display:grid;gap:8px;margin-top:12px;">Loading linked accounts…</div>
       </section>
 
       <!-- Real Live Stats Grid -->
@@ -178,11 +226,7 @@
         </div>
       </section>
 
-      <div class="card" id="examCountdownSection" style="margin-bottom: 24px;">
-        <h3>Next Exam 🎯</h3>
-        <p id="dashExamName" style="font-weight: 700; margin-top: 8px;">No upcoming exams scheduled</p>
-        <p id="dashExamCountdown" style="color: var(--text-secondary); font-size: 0.9rem;">Add an exam in the Exams section to see your countdown.</p>
-      </div>
+
 
       <!-- Today's Real Tasks & Quick Actions -->
       <div class="grid-cards" id="tasksQuickSection" style="grid-template-columns: 2fr 1fr;">
@@ -197,6 +241,7 @@
           <h3>Quick Actions</h3>
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
             <button class="btn" onclick="location.href='focus.html'">⏱️ Start Focus Session</button>
+            <button class="btn" style="background:transparent;border:1px solid var(--border-color);color:var(--text-primary);" onclick="location.href='quiz.html'">🧠 Open Daily Quiz</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='planner.html'">➕ Add Study Task</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='notes.html'">📝 Create Note</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='exam.html'">🎯 View Exams</button>
@@ -210,7 +255,7 @@
         <div style="display: grid; gap: 10px;">
           <label><input type="checkbox" data-dashboard-section="statsSection" checked> Show overview and study streak</label>
           <label><input type="checkbox" data-dashboard-section="assignmentProgressSection" checked> Show cloud assignment progress</label>
-          <label><input type="checkbox" data-dashboard-section="examCountdownSection" checked> Show next exam countdown</label>
+          <label><input type="checkbox" checked disabled> Always show next exam countdown</label>
           <label><input type="checkbox" data-dashboard-section="tasksQuickSection" checked> Show tasks and quick actions</label>
         </div>
       </details>
@@ -419,17 +464,50 @@
     document.getElementById('dashStudyStreak').textContent = `${studyStreak} ${studyStreak === 1 ? 'day' : 'days'}`;
     document.getElementById('dashStreakSub').textContent = studyStreak ? 'Keep it going — study a little each day!' : 'Complete a task or focus session to start.';
 
-    // Next upcoming exam countdown
-    let exams = [];
-    try { exams = JSON.parse(localStorage.getItem('auraway_exams') || '[]'); } catch (e) {}
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const upcomingExam = exams.filter(exam => exam.date && new Date(exam.date + 'T00:00:00') >= todayStart).sort((a, b) => a.date.localeCompare(b.date))[0];
-    if (upcomingExam) {
-      const examDate = new Date(upcomingExam.date + 'T00:00:00');
-      const daysLeft = Math.round((examDate - todayStart) / 86400000);
-      document.getElementById('dashExamName').textContent = upcomingExam.subject;
-      document.getElementById('dashExamCountdown').textContent = daysLeft === 0 ? 'Your exam is today!' : daysLeft === 1 ? 'Tomorrow is exam day.' : `${daysLeft} days remaining · ${upcomingExam.date}`;
+    // Live exam countdown — refreshes every minute using the student's local time.
+    function renderDashboardExamCountdown() {
+      const name = document.getElementById('dashExamName');
+      const countdown = document.getElementById('dashExamCountdown');
+      if (!name || !countdown) return;
+      const daysDisplay=document.getElementById('dashExamDays');
+      const hoursDisplay=document.getElementById('dashExamHours');
+      const minutesDisplay=document.getElementById('dashExamMinutes');
+      const setLargeCountdown=(days,hours,minutes)=>{if(daysDisplay)daysDisplay.textContent=days;if(hoursDisplay)hoursDisplay.textContent=hours;if(minutesDisplay)minutesDisplay.textContent=minutes;};
+      let scheduledExams = [];
+      try {
+        const stored = JSON.parse(localStorage.getItem('auraway_exams') || '[]');
+        scheduledExams = Array.isArray(stored) ? stored : [];
+      } catch (e) { scheduledExams = []; }
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const upcoming = scheduledExams
+        .filter(exam => exam && /^\d{4}-\d{2}-\d{2}$/.test(exam.date || ''))
+        .map(exam => ({ ...exam, target: new Date(Number(exam.date.slice(0,4)), Number(exam.date.slice(5,7))-1, Number(exam.date.slice(8,10)), 23, 59, 59) }))
+        .filter(exam => exam.target >= today)
+        .sort((a,b) => a.target - b.target)[0];
+      if (!upcoming) {
+        name.textContent = 'No upcoming exams scheduled';
+        setLargeCountdown('--','--','--');
+        countdown.textContent = 'Add your next exam date to start the live countdown.';
+        name.innerHTML = 'No upcoming exams yet · <a href="exam.html">Add an exam</a>';
+        return;
+      }
+      name.textContent = upcoming.subject || 'Upcoming examination';
+      const remaining = upcoming.target.getTime() - now.getTime();
+      if (remaining <= 0) {
+        setLargeCountdown('0','0','0');
+        countdown.textContent = 'Your exam is today! All the best.';
+        return;
+      }
+      const days = Math.floor(remaining / 86400000);
+      const hours = Math.floor((remaining % 86400000) / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      setLargeCountdown(String(days).padStart(2,'0'),String(hours).padStart(2,'0'),String(minutes).padStart(2,'0'));
+      countdown.textContent = 'Exam date: ' + new Date(upcoming.date+'T00:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + ' · ' + days + ' days remaining';
     }
+    renderDashboardExamCountdown();
+    window.setInterval(renderDashboardExamCountdown, 60000);
+    window.addEventListener('storage', event => { if (event.key === 'auraway_exams') renderDashboardExamCountdown(); });
 
     // Dashboard section visibility preferences
     const dashboardPrefs = (() => { try { return JSON.parse(localStorage.getItem('auraway_dashboard_prefs') || '{}'); } catch (e) { return {}; } })();

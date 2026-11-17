@@ -8,6 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css?v=20261114-nav2">
   <script src="pwa-installer.js" defer></script>
+  <script src="portal-switcher.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <style>
@@ -36,6 +37,22 @@
     .teacher-roster-tools .input-field{min-width:0}
     .teacher-roster-count{align-self:center;color:var(--text-secondary);font-size:.78rem;white-space:nowrap}
     #studentsRosterList .student-row[hidden]{display:none!important}
+
+    .quiz-manager-grid{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(320px,1.1fr);gap:16px}
+    .quiz-manager-card{min-width:0;padding:18px;border:1px solid var(--border-color);border-radius:16px;background:var(--bg-card)}
+    .quiz-manager-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .quiz-manager-fields .full{grid-column:1/-1}
+    .quiz-manager-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .quiz-manager-question{padding:12px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary);margin-top:9px}
+    .quiz-manager-question p{margin:5px 0;color:var(--text-secondary);font-size:.82rem}
+    .quiz-bank-pagination{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color)}
+    .quiz-bank-pagination .btn{min-width:112px}
+    .quiz-bank-progress{font-size:.76rem;color:var(--text-secondary);text-align:center}
+    .quiz-manager-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+    .quiz-manager-actions button{padding:6px 10px;font-size:.78rem}
+    @media(max-width:760px){.quiz-manager-grid{grid-template-columns:1fr}}
+    @media(max-width:520px){.quiz-manager-fields,.quiz-manager-options{grid-template-columns:1fr}.quiz-manager-fields .full{grid-column:auto}}
+
     @media(max-width:600px){.teacher-overview-grid{grid-template-columns:1fr 1fr}.teacher-overview-card:last-child{grid-column:1/-1}.teacher-roster-tools{grid-template-columns:1fr}.teacher-roster-count{white-space:normal}}
 
   </style>
@@ -51,16 +68,13 @@
         </svg>
         <h1 style="margin:0;">PULSE-T — Teacher Sign In 👩‍🏫</h1>
       </div>
-      <p style="color:var(--text-secondary);margin:8px 0 16px;">Enter your teacher access code and name to continue.</p>
-      <div class="portal-form" id="teacherLoginForm">
-        <input id="teacherDisplayName" class="input-field" type="text" placeholder="Your teacher name" autocomplete="name" required>
-        <input id="teacherAccessCode" class="input-field" type="password" placeholder="Teacher access code" autocomplete="current-password" required>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button class="btn" id="teacherLoginButton" type="button">Sign in</button>
-          <button class="btn" id="teacherSignupButton" type="button" style="background:#0f766e;">Sign up</button>
-        </div>
-        <p id="teacherLoginError" role="alert" style="color:#ef4444;"></p>
-      </div>
+      <p style="color:var(--text-secondary);margin:8px 0 16px;">Enter your login code and secret access code to continue.</p>
+      <form class="portal-form" id="teacherLoginForm">
+        <input id="teacherLoginCode" class="input-field" type="password" inputmode="numeric" autocomplete="off" placeholder="Login Code" required>
+        <input id="teacherAccessCode" class="input-field" type="password" autocomplete="current-password" placeholder="Secret Access Code" required>
+        <button class="btn" id="teacherLoginButton" type="submit">Sign In</button>
+        <p id="teacherLoginError" role="alert" aria-live="polite" style="color:#ef4444;"></p>
+      </form>
     </div>
   </section>
   <div class="app-container" id="teacherAppContainer" style="display:none;">
@@ -79,10 +93,12 @@
         <ul class="nav-links">
           <li><a href="#teacherCommandCenter">🏠 <span>Overview</span></a></li>
           <li><a href="#teacherStudentsSection">👥 <span>Students</span></a></li>
+          <li><a href="#teacherTimetableManager">🗓️ <span>Timetable</span></a></li>
           <li><a href="#teacherAttendanceManager">📋 <span>Attendance</span></a></li>
           <li><a href="#teacherMarksSection">📝 <span>Marks</span></a></li>
-          <li><a href="#teacherAssignmentsSection">📚 <span>Assignments</span></a></li>
-          <li><a href="#teacherActivitySection">🔔 <span>Activity</span></a></li>
+          <li><a href="#teacherAssignmentsSection" id="teacherAssignmentsNav">📚 <span>Assignments</span></a></li>
+          <li><a href="#teacherAssignmentStatusPage" id="teacherAssignmentStatusNav">📊 <span>Assignment Completion Status</span></a></li>
+          <li><a href="#teacherQuizManager">🧠 <span>Quiz Manager</span></a></li>          <li><a href="#teacherActivitySection">🔔 <span>Activity</span></a></li>
           <li><a href="#teacherAnalyticsSection">📊 <span>Analytics</span></a></li>
         </ul>
       </nav>
@@ -112,7 +128,76 @@
       <div class="teacher-quick-actions">
         <button type="button" class="btn" onclick="document.getElementById('addStudentForm').scrollIntoView({behavior:'smooth',block:'center'})">＋ Add student</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherAttendanceManager').scrollIntoView({behavior:'smooth'})">Mark attendance</button>
-        <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('assignHwForm').scrollIntoView({behavior:'smooth',block:'center'})">Publish assignment</button>
+        <button type="button" class="btn teacher-secondary-action" id="openTeacherAssignmentsPage">＋ Create / Publish Assignment</button>
+        <button type="button" class="btn teacher-secondary-action" id="openAssignmentStatusFromDashboard">📊 Assignment Completion Status</button>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <h3>📈 Assignment Dashboard</h3>
+        <p style="font-size:.82rem;color:var(--text-secondary);margin:4px 0 12px;">A live summary of published work and student completion.</p>
+        <div class="grid-cards" style="grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;">
+          <div class="stat-box"><small style="color:var(--text-secondary);">📚 Total Assignments</small><h2 id="assignmentStatTotal" style="margin-top:6px;">—</h2></div>
+          <div class="stat-box"><small style="color:var(--text-secondary);">✅ Completed</small><h2 id="assignmentStatCompleted" style="margin-top:6px;color:#10b981;">—</h2></div>
+          <div class="stat-box"><small style="color:var(--text-secondary);">⏳ Pending</small><h2 id="assignmentStatPending" style="margin-top:6px;color:#f59e0b;">—</h2></div>
+          <div class="stat-box"><small style="color:var(--text-secondary);">🎯 Completion Rate</small><h2 id="assignmentStatRate" style="margin-top:6px;">—</h2></div>
+        </div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;">
+          <button type="button" class="btn" id="openAssignmentsFromSummary">📚 Open Assignments — Create, Edit & Delete</button>
+          <button type="button" class="btn teacher-secondary-action" id="openStatusFromSummary">📊 View Completion Status</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="teacherQuizManager" class="card" style="margin:0 0 22px;scroll-margin-top:20px;">
+      <div class="teacher-command-heading" style="margin-bottom:14px;">
+        <div><span class="teacher-eyebrow">PULSE LEARNING</span><h2>Daily Quiz Question Manager</h2><p>Create, update and publish general subject questions for Standards 5–12.</p></div>
+        <span class="teacher-live-label"><span></span> Teacher controls</span>
+      </div>
+      <div class="quiz-manager-grid">
+        <form id="teacherQuizQuestionForm" class="quiz-manager-card">
+          <input type="hidden" id="teacherQuizQuestionId">
+          <h3 id="teacherQuizFormHeading" style="margin:0 0 12px;">＋ Add a question</h3>
+          <div class="quiz-manager-fields">
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Subject
+              <select id="teacherQuizSubject" class="input-field" required>
+                <option>Mathematics</option><option>Science</option><option>English</option><option>Social Science</option><option>Malayalam</option><option>Computer Science</option>
+              </select>
+            </label>
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Question
+              <textarea id="teacherQuizQuestionText" class="input-field" rows="3" maxlength="500" required placeholder="Enter a general subject question"></textarea>
+            </label>
+            <div class="full"><span style="font-size:.82rem;color:var(--text-secondary);">Four answer options</span></div>
+            <div class="quiz-manager-options full">
+              <input id="teacherQuizOption0" class="input-field" maxlength="160" required placeholder="Option A">
+              <input id="teacherQuizOption1" class="input-field" maxlength="160" required placeholder="Option B">
+              <input id="teacherQuizOption2" class="input-field" maxlength="160" required placeholder="Option C">
+              <input id="teacherQuizOption3" class="input-field" maxlength="160" required placeholder="Option D">
+            </div>
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Correct answer
+              <select id="teacherQuizCorrectOption" class="input-field" required><option value="0">Option A</option><option value="1">Option B</option><option value="2">Option C</option><option value="3">Option D</option></select>
+            </label>
+            <label class="full" style="font-size:.82rem;color:var(--text-secondary);">Short explanation (optional)
+              <textarea id="teacherQuizExplanation" class="input-field" rows="2" maxlength="500" placeholder="Explain why this answer is correct"></textarea>
+            </label>
+          </div>
+          <p id="teacherQuizFormMessage" role="status" style="font-size:.82rem;color:var(--text-secondary);min-height:20px;"></p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" id="teacherQuizSaveButton" type="submit">Save question</button>
+            <button class="btn teacher-secondary-action" id="teacherQuizResetButton" type="button">Clear form</button>
+          </div>
+        </form>
+        <div class="quiz-manager-card">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+            <h3 style="margin:0;">Question bank</h3>
+            <button class="btn teacher-secondary-action" id="teacherQuizRefreshButton" type="button">↻ Refresh</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px;">
+            <select id="teacherQuizFilter" class="input-field"><option value="">All subjects</option><option>Mathematics</option><option>Science</option><option>English</option><option>Social Science</option><option>Malayalam</option><option>Computer Science</option></select>
+            <span id="teacherQuizQuestionCount" class="quiz-status" style="align-self:center;white-space:nowrap;">— questions</span>
+          </div>
+          <p id="teacherQuizListMessage" class="quiz-status" role="status"></p>
+          <div id="teacherQuizQuestionList" aria-live="polite"><p class="quiz-status">Loading question bank…</p></div>
+        </div>
       </div>
     </section>
 
@@ -167,10 +252,30 @@
 
     </div>
 
+    <section id="teacherTimetableManager" class="card" style="margin:0 0 20px;" aria-labelledby="teacherTimetableHeading">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div><h3 id="teacherTimetableHeading">🗓️ Shared School Timetable</h3><p style="color:var(--text-secondary);font-size:.85rem;margin:4px 0 12px;">Only the teacher account can publish or change periods. Students and parents get read-only access.</p></div>
+        <button type="button" class="btn teacher-secondary-action" id="refreshTeacherTimetable">Refresh</button>
+      </div>
+      <form id="teacherTimetableForm" class="portal-form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;">
+        <select id="ttTeacherDay" class="input-field" required><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select>
+        <select id="ttTeacherType" class="input-field"><option value="class">Class</option><option value="study">Study</option><option value="break">Break</option><option value="other">Other</option></select>
+        <input id="ttTeacherTitle" class="input-field" maxlength="80" placeholder="Subject / activity" required>
+        <input id="ttTeacherRoom" class="input-field" maxlength="50" placeholder="Room (optional)">
+        <input id="ttTeacherStart" class="input-field" type="time" value="09:00" required>
+        <input id="ttTeacherEnd" class="input-field" type="time" value="09:45" required>
+        <input id="ttTeacherNote" class="input-field" maxlength="140" placeholder="Note (optional)">
+        <button class="btn" type="submit" id="ttTeacherSave">＋ Add period</button>
+        <button class="btn teacher-secondary-action" type="button" id="ttTeacherCancel" hidden>Cancel edit</button>
+      </form>
+      <p id="ttTeacherMessage" role="status" style="font-size:.82rem;color:var(--text-secondary);margin:8px 0;"></p>
+      <div id="teacherTimetableList" style="display:grid;gap:8px;"><p style="color:var(--text-secondary);">Loading timetable…</p></div>
+    </section>
+
     <!-- Teacher Attendance Manager -->
     <div class="card" style="margin-bottom:20px;" id="teacherAttendanceManager">
       <h3>📋 Class Attendance Manager</h3>
-      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date, mark each student, then save the register.</p>
+      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date to mark attendance. Existing records have an individual delete control; deleting one record never deletes a student's profile or other attendance.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
         <select id="attendanceClassSelect" class="input-field"><option value="">Select class</option></select>
         <input id="attendanceDateInput" class="input-field" type="date">
@@ -234,11 +339,16 @@
 
     </section>
 
-    <section id="teacherAssignmentsSection" aria-labelledby="teacherAssignmentsHeading">
-    <!-- Teacher assignment publishing workspace -->
-    <div class="card" style="margin-bottom:20px;">
-      <h3 id="teacherAssignmentsHeading">📚 Assignments — Publish to Students</h3>
+    <section id="teacherAssignmentsSection" class="card" hidden style="margin:0 0 20px;" aria-labelledby="teacherAssignmentsHeading">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h2 id="teacherAssignmentsHeading">📚 Create & Publish Assignments</h2>
+          <p style="font-size:.85rem;color:var(--text-secondary);margin:5px 0 12px;">Create homework and publish it to all students or a selected class.</p>
+        </div>
+        <button type="button" class="btn teacher-secondary-action" id="backFromTeacherAssignments">← Back to dashboard</button>
+      </div>
       <form id="assignHwForm" class="portal-form">
+        <input type="hidden" id="hwAssignmentId">
         <input type="text" id="hwTitle" class="input-field" placeholder="Homework Title" required>
         <input type="text" id="hwSubject" class="input-field" placeholder="Subject (e.g. Mathematics)" required>
         <input type="date" id="hwDue" class="input-field" required>
@@ -246,31 +356,33 @@
         <select id="hwTarget" class="input-field">
           <option value="ALL">All students</option>
         </select>
-        <button type="submit" class="btn">🚀 Publish Assignment</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="submit" class="btn" id="hwSubmitButton">🚀 Publish Assignment</button><button type="button" class="btn teacher-secondary-action" id="hwCancelEdit" hidden>Cancel edit</button></div>
         <p style="font-size:.8rem;color:var(--text-secondary);margin:0;">Choose all students or a class. Published assignments appear in the students' Classroom and parent portal.</p>
       </form>
-    </div>
-
-    <div class="card" style="margin-top:20px;">
-      <h3>📈 Assignment Dashboard</h3>
-      <p style="font-size:.82rem;color:var(--text-secondary);margin:4px 0 12px;">A live summary of published work and student completion.</p>
-      <div class="grid-cards" style="grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;">
-        <div class="stat-box"><small style="color:var(--text-secondary);">📚 Total Assignments</small><h2 id="assignmentStatTotal" style="margin-top:6px;">—</h2></div>
-        <div class="stat-box"><small style="color:var(--text-secondary);">✅ Completed</small><h2 id="assignmentStatCompleted" style="margin-top:6px;color:#10b981;">—</h2></div>
-        <div class="stat-box"><small style="color:var(--text-secondary);">⏳ Pending</small><h2 id="assignmentStatPending" style="margin-top:6px;color:#f59e0b;">—</h2></div>
-        <div class="stat-box"><small style="color:var(--text-secondary);">🎯 Completion Rate</small><h2 id="assignmentStatRate" style="margin-top:6px;">—</h2></div>
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <h3 style="margin:0;">Manage Published Assignments</h3>
+          <button type="button" class="btn teacher-secondary-action" id="refreshTeacherAssignments">↻ Refresh</button>
+        </div>
+        <p style="font-size:.82rem;color:var(--text-secondary);">Edit assignment details or delete an assignment that is no longer needed.</p>
+        <div id="teacherAssignmentManageList" aria-live="polite"><p style="color:var(--text-secondary);">Loading assignments…</p></div>
       </div>
-    </div>
+    </section>
 
-    <div class="card" style="margin-top:20px;">
+    <section id="teacherAssignmentStatusPage" class="card" hidden style="margin:0 0 20px;" aria-labelledby="teacherAssignmentStatusHeading">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <h3>📊 Assignment Completion Status</h3>
-        <button type="button" class="btn" id="refreshAssignmentStatus" style="padding:6px 12px;">Refresh Status</button>
+        <div>
+          <h2 id="teacherAssignmentStatusHeading">📊 Assignment Completion Status</h2>
+          <p style="font-size:.85rem;color:var(--text-secondary);margin:5px 0 12px;">Review completion for each published assignment and its assigned students.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn teacher-secondary-action" id="backFromAssignmentStatus">← Back to dashboard</button>
+          <button type="button" class="btn" id="refreshAssignmentStatus" style="padding:6px 12px;">Refresh Status</button>
+        </div>
       </div>
       <div id="teacherAssignmentOverview" style="margin-top:12px;">
         <p style="color:var(--text-secondary);">Loading assignment status...</p>
       </div>
-    </div>
     </section>
     </main>
   </div>
@@ -294,7 +406,10 @@
     const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/bright-handler';
 
     async function showTeacherPortal(session) {
-      if (session?.user?.email?.toLowerCase() !== 'teacher@auraway.app') {
+      const email = session?.user?.email?.toLowerCase();
+      const appRole = session?.user?.app_metadata?.role;
+      const isAuthorisedTeacher = email === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(appRole);
+      if (!isAuthorisedTeacher) {
         await supabaseClient.auth.signOut();
         document.getElementById('teacherLoginError').textContent = 'This account is not authorized for the teacher portal.';
         return;
@@ -309,26 +424,28 @@
       await loadTeacherAnalytics();
       loadStudentActivity();
       loadAssignmentOverview();
+      await loadTeacherAssignmentManager();
+      await loadTeacherQuizManager();
     }
 
-    async function requestTeacherAccess(action, event) {
+    async function signInTeacher(event) {
       event.preventDefault();
-      const name = document.getElementById('teacherDisplayName').value.trim();
-      const code = document.getElementById('teacherAccessCode').value;
-      const button = event.currentTarget;
+      const loginCode = document.getElementById('teacherLoginCode').value.trim();
+      const secretCode = document.getElementById('teacherAccessCode').value;
+      const button = document.getElementById('teacherLoginButton');
       const errorBox = document.getElementById('teacherLoginError');
-      if (!supabaseClient || !name || !code) {
-        errorBox.textContent = 'Enter your first name and teacher access code.';
+      if (!supabaseClient || !loginCode || !secretCode) {
+        errorBox.textContent = 'Enter both codes to continue.';
         return;
       }
       button.disabled = true;
-      button.textContent = action === 'signup' ? 'Creating account…' : 'Signing in…';
+      button.textContent = 'Signing in…';
       errorBox.textContent = '';
       try {
         const response = await fetch(TEACHER_AUTH_FUNCTION_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
-          body: JSON.stringify({ action, first_name: name, access_code: code })
+          body: JSON.stringify({ action: 'signin', login_code: loginCode, access_code: secretCode })
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.token_hash) {
@@ -336,21 +453,21 @@
         }
         const { data, error } = await supabaseClient.auth.verifyOtp({
           token_hash: result.token_hash,
-          type: 'magiclink'
+          type: 'email'
         });
         if (error || !data.session) throw new Error('Could not create a secure teacher session. Please try again.');
+        document.getElementById('teacherLoginCode').value = '';
         document.getElementById('teacherAccessCode').value = '';
         await showTeacherPortal(data.session);
       } catch (error) {
         errorBox.textContent = error.message || 'Teacher sign-in failed. Please try again.';
       } finally {
         button.disabled = false;
-        button.textContent = action === 'signup' ? 'Create teacher account' : 'Sign in';
+        button.textContent = 'Sign In';
       }
     }
 
-    document.getElementById('teacherSignupButton').addEventListener('click', (event) => requestTeacherAccess('signup', event));
-    document.getElementById('teacherLoginButton').addEventListener('click', (event) => requestTeacherAccess('signin', event));
+    document.getElementById('teacherLoginForm').addEventListener('submit', signInTeacher);
 
     document.getElementById('teacherSignOut').addEventListener('click', async () => {
       await supabaseClient.auth.signOut();
@@ -363,7 +480,7 @@
         return;
       }
       const { data } = await supabaseClient.auth.getSession();
-      if (data.session?.user?.email?.toLowerCase() === 'teacher@auraway.app') await showTeacherPortal(data.session);
+      if (data.session?.user?.email?.toLowerCase() === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(data.session?.user?.app_metadata?.role)) await showTeacherPortal(data.session);
       else if (data.session) await supabaseClient.auth.signOut();
     })();
 
@@ -376,6 +493,7 @@
     });
 
     let allStudents = [];
+    let teacherRosterLimit = 4;
 
     async function loadStudentsRoster() {
       const container = document.getElementById('studentsRosterList');
@@ -395,6 +513,7 @@
         return;
       }
       container.innerHTML = '';
+      teacherRosterLimit = 4;
       allStudents.forEach(st => {
         const div = document.createElement('div');
         div.className = 'student-row';
@@ -450,21 +569,44 @@
     function filterTeacherRoster() {
       const search = (document.getElementById('teacherStudentSearch')?.value || '').trim().toLowerCase();
       const className = document.getElementById('teacherStudentClassFilter')?.value || '';
-      const rows = [...document.querySelectorAll('#studentsRosterList .student-row')];
-      let visible = 0;
-      rows.forEach(row => {
+      const container = document.getElementById('studentsRosterList');
+      const rows = [...container.querySelectorAll('.student-row')];
+      const matchingRows = rows.filter(row => {
         const matchesSearch = !search || row.dataset.studentName.includes(search) || row.dataset.studentClass.includes(search) || row.dataset.studentCode.includes(search);
         const matchesClass = !className || row.dataset.studentClass === className;
-        const show = matchesSearch && matchesClass;
-        row.hidden = !show;
-        if (show) visible++;
+        return matchesSearch && matchesClass;
       });
+      rows.forEach(row => { row.hidden = true; });
+      matchingRows.slice(0, teacherRosterLimit).forEach(row => { row.hidden = false; });
+
+      container.querySelector('#teacherRosterMore')?.remove();
+      const shown = Math.min(teacherRosterLimit, matchingRows.length);
       const count = document.getElementById('teacherRosterCount');
-      if (count) count.textContent = visible + ' of ' + allStudents.length + ' students';
+      if (count) count.textContent = 'Showing ' + shown + ' of ' + matchingRows.length + ' matching students';
+
+      if (matchingRows.length > shown) {
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.id = 'teacherRosterMore';
+        more.className = 'btn teacher-secondary-action';
+        more.style.cssText = 'display:block;margin:14px auto 4px;padding:10px 22px;';
+        more.textContent = 'Show 5 more (' + (matchingRows.length - shown) + ' remaining)';
+        more.addEventListener('click', () => {
+          teacherRosterLimit += 5;
+          filterTeacherRoster();
+        });
+        container.appendChild(more);
+      }
     }
 
-    document.getElementById('teacherStudentSearch').addEventListener('input', filterTeacherRoster);
-    document.getElementById('teacherStudentClassFilter').addEventListener('change', filterTeacherRoster);
+    document.getElementById('teacherStudentSearch').addEventListener('input', () => {
+      teacherRosterLimit = 4;
+      filterTeacherRoster();
+    });
+    document.getElementById('teacherStudentClassFilter').addEventListener('change', () => {
+      teacherRosterLimit = 4;
+      filterTeacherRoster();
+    });
 
     function populateTeacherMarkStudents() {
       const select = document.getElementById('teacherMarkStudent');
@@ -589,12 +731,29 @@
       if ([...select.options].some(option => option.value === currentValue)) select.value = currentValue;
     }
 
+    function attendanceTimeDetails(record) {
+      if (!record?.created_at) return '';
+      const instant = new Date(record.created_at);
+      if (Number.isNaN(instant.getTime())) return '';
+      const displayTime = instant.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
+      });
+      if (record.marked_by == null && record.status === 'Present') {
+        const clock = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).format(instant);
+        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
+      }
+      return 'Recorded: ' + displayTime;
+    }
+
     async function loadAttendanceRoster() {
       const className = document.getElementById('attendanceClassSelect').value;
       const date = document.getElementById('attendanceDateInput').value;
       const roster = document.getElementById('teacherAttendanceRoster');
       const saveButton = document.getElementById('saveClassAttendance');
-      document.getElementById('attendanceSaveMessage').textContent = '';
+      const message = document.getElementById('attendanceSaveMessage');
+      message.textContent = '';
       if (!className || !date) {
         roster.textContent = 'Choose both a class and date.';
         saveButton.style.display = 'none';
@@ -608,15 +767,16 @@
       }
       const codes = students.map(student => student.student_code);
       const { data: records, error } = await supabaseClient.from('attendance_records')
-        .select('student_code,status').eq('attendance_date', date).in('student_code', codes);
+        .select('id,student_code,status,created_at,marked_by').eq('attendance_date', date).in('student_code', codes);
       if (error) {
-        roster.textContent = 'Could not load attendance. Run the attendance SQL setup in Supabase first. ' + error.message;
+        roster.textContent = 'Could not load attendance. ' + error.message;
         saveButton.style.display = 'none';
         return;
       }
-      const existing = new Map((records || []).map(record => [record.student_code, record.status]));
+      const existing = new Map((records || []).map(record => [record.student_code, record]));
       roster.innerHTML = '';
       students.forEach(student => {
+        const record = existing.get(student.student_code);
         const row = document.createElement('div');
         row.className = 'student-row';
         const info = document.createElement('div');
@@ -626,6 +786,12 @@
         code.textContent = student.student_code;
         code.style.color = 'var(--text-secondary)';
         info.append(name, document.createElement('br'), code);
+        const timing = document.createElement('small');
+        timing.style.cssText = 'display:block;margin-top:5px;color:var(--text-secondary);font-size:.78rem;';
+        timing.textContent = attendanceTimeDetails(record);
+        if (timing.textContent) info.appendChild(timing);
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
         const select = document.createElement('select');
         select.className = 'input-field attendance-status-select';
         select.dataset.studentCode = student.student_code;
@@ -636,11 +802,60 @@
           option.textContent = status === 'Present' ? 'Present ✅' : status === 'Absent' ? 'Absent ❌' : 'Leave 📝';
           select.appendChild(option);
         });
-        select.value = existing.get(student.student_code) || 'Present';
-        row.append(info, select);
+        select.value = record?.status || 'Present';
+        actions.appendChild(select);
+
+        if (record?.id) {
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'button';
+          deleteButton.className = 'btn';
+          deleteButton.textContent = 'Delete record';
+          deleteButton.style.cssText = 'background:#b91c1c;padding:8px 11px;';
+          deleteButton.addEventListener('click', () => deleteAttendanceRecord(
+            record.id,
+            student.student_name,
+            student.student_code,
+            date,
+            deleteButton
+          ));
+          actions.appendChild(deleteButton);
+        }
+        row.append(info, actions);
         roster.appendChild(row);
       });
       saveButton.style.display = 'inline-flex';
+    }
+
+    async function deleteAttendanceRecord(recordId, studentName, studentCode, attendanceDate, button) {
+      const confirmed = window.confirm(
+        'Delete only this attendance record?\n\nStudent: ' + studentName +
+        '\nCode: ' + studentCode + '\nDate: ' + attendanceDate +
+        '\n\nThe student profile and all other dates will remain unchanged.'
+      );
+      if (!confirmed) return;
+
+      const message = document.getElementById('attendanceSaveMessage');
+      button.disabled = true;
+      button.textContent = 'Deleting…';
+      const { data, error } = await supabaseClient
+        .from('attendance_records')
+        .delete()
+        .eq('id', recordId)
+        .select('id');
+
+      if (error || !data?.length) {
+        button.disabled = false;
+        button.textContent = 'Delete record';
+        message.style.color = '#ef4444';
+        message.textContent = error
+          ? 'Delete failed. Only an authorised teacher can delete attendance. ' + error.message
+          : 'This record was not deleted. Check teacher permissions or refresh the register.';
+        return;
+      }
+
+      message.style.color = '#10b981';
+      message.textContent = 'One attendance record deleted. Student profile and other dates were not changed.';
+      await loadAttendanceRoster();
     }
 
     async function saveClassAttendance() {
@@ -667,6 +882,7 @@
       }
       message.style.color = '#10b981';
       message.textContent = 'Attendance saved for ' + records.length + ' students.';
+      await loadAttendanceRoster();
       loadStudentsRoster();
     }
 
@@ -674,7 +890,7 @@
     document.getElementById('loadAttendanceClass').addEventListener('click', loadAttendanceRoster);
     document.getElementById('saveClassAttendance').addEventListener('click', saveClassAttendance);
 
-    async function loadAssignmentOverview() {
+        async function loadAssignmentOverview() {
       const container = document.getElementById('teacherAssignmentOverview');
       const [{ data: assignments, error: assignmentError }, { data: updates, error: updatesError }] = await Promise.all([
         supabaseClient.from('assignments').select('*').order('due_date', { ascending: true }),
@@ -760,6 +976,54 @@
       });
     }
 
+    const teacherMain = document.getElementById('teacherPortalContent');
+    const assignmentStatusPage = document.getElementById('teacherAssignmentStatusPage');
+    let assignmentStatusHiddenSections = [];
+
+    let activeTeacherSubpage = null;
+
+    function openTeacherSubpage(page) {
+      const target = page === 'assignments' ? document.getElementById('teacherAssignmentsSection') : assignmentStatusPage;
+      if (activeTeacherSubpage === page) {
+        if (page === 'status') loadAssignmentOverview();
+        return;
+      }
+      if (!activeTeacherSubpage) {
+        assignmentStatusHiddenSections = [...teacherMain.children].filter(node => node !== document.getElementById('teacherTop') && node !== target && !node.hidden);
+        assignmentStatusHiddenSections.forEach(node => { node.hidden = true; });
+      } else {
+        document.getElementById('teacherAssignmentsSection').hidden = true;
+        assignmentStatusPage.hidden = true;
+      }
+      target.hidden = false;
+      activeTeacherSubpage = page;
+      target.scrollIntoView({behavior:'smooth',block:'start'});
+      if (page === 'status') loadAssignmentOverview();
+    }
+
+    function closeTeacherSubpage() {
+      document.getElementById('teacherAssignmentsSection').hidden = true;
+      assignmentStatusPage.hidden = true;
+      assignmentStatusHiddenSections.forEach(node => { node.hidden = false; });
+      assignmentStatusHiddenSections = [];
+      activeTeacherSubpage = null;
+      document.getElementById('teacherCommandCenter').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    document.getElementById('openTeacherAssignmentsPage').addEventListener('click', () => openTeacherSubpage('assignments'));
+    document.getElementById('openTeacherAssignmentsPage').addEventListener('click', loadTeacherAssignmentManager);
+    document.getElementById('teacherAssignmentsNav').addEventListener('click', loadTeacherAssignmentManager);
+    document.getElementById('teacherAssignmentsNav').addEventListener('click', event => { event.preventDefault(); openTeacherSubpage('assignments'); });
+    document.getElementById('backFromTeacherAssignments').addEventListener('click', closeTeacherSubpage);
+    document.getElementById('openAssignmentStatusFromDashboard').addEventListener('click', () => openTeacherSubpage('status'));
+    document.getElementById('openAssignmentsFromSummary').addEventListener('click', () => {
+      openTeacherSubpage('assignments');
+      loadTeacherAssignmentManager();
+    });
+    document.getElementById('openStatusFromSummary').addEventListener('click', () => openTeacherSubpage('status'));
+    document.getElementById('openAssignmentStatusPage')?.addEventListener('click', () => openTeacherSubpage('status'));
+    document.getElementById('teacherAssignmentStatusNav').addEventListener('click', event => { event.preventDefault(); openTeacherSubpage('status'); });
+    document.getElementById('backFromAssignmentStatus').addEventListener('click', closeTeacherSubpage);
     document.getElementById('refreshAssignmentStatus').addEventListener('click', loadAssignmentOverview);
 
 
@@ -823,15 +1087,13 @@
     document.getElementById('refreshTeacherAnalytics').addEventListener('click',loadTeacherAnalytics);
     window.addEventListener('resize',()=>{if(document.getElementById('teacherAnalyticsSection'))loadTeacherAnalytics();});
 
-    async function loadStudentActivity() {
+    let studentActivityItems = [];
+    let studentActivityLimit = 3;
+
+    function renderStudentActivity() {
       const feed = document.getElementById('studentActivityFeed');
-      const { data, error } = await supabaseClient.from('student_updates').select('*').order('updated_at', { ascending: false }).limit(20);
-      if (error || !data || data.length === 0) {
-        feed.innerHTML = '<p style="color:var(--text-secondary);">No student updates yet.</p>';
-        return;
-      }
       feed.innerHTML = '';
-      data.forEach(item => {
+      studentActivityItems.slice(0, studentActivityLimit).forEach(item => {
         const div = document.createElement('div');
         div.className = 'student-row';
         const detail = item.status === 'Completed'
@@ -847,6 +1109,31 @@
         `;
         feed.appendChild(div);
       });
+      if (studentActivityItems.length > studentActivityLimit) {
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'btn teacher-secondary-action';
+        more.style.cssText = 'display:block;margin:14px auto 4px;padding:10px 22px;';
+        more.textContent = 'Show 4 more (' + (studentActivityItems.length - studentActivityLimit) + ' remaining)';
+        more.addEventListener('click', () => {
+          studentActivityLimit += 4;
+          renderStudentActivity();
+        });
+        feed.appendChild(more);
+      }
+    }
+
+    async function loadStudentActivity() {
+      const feed = document.getElementById('studentActivityFeed');
+      const { data, error } = await supabaseClient.from('student_updates').select('*').order('updated_at', { ascending: false }).limit(100);
+      if (error || !data || data.length === 0) {
+        studentActivityItems = [];
+        feed.innerHTML = '<p style="color:var(--text-secondary);">No student updates yet.</p>';
+        return;
+      }
+      studentActivityItems = data;
+      studentActivityLimit = 3;
+      renderStudentActivity();
     }
 
     function toggleSelectAll() {
@@ -984,26 +1271,119 @@
       loadStudentsRoster();
     });
 
+    function resetAssignmentForm() {
+      const form = document.getElementById('assignHwForm');
+      form.reset();
+      document.getElementById('hwAssignmentId').value = '';
+      document.getElementById('hwTarget').value = 'ALL';
+      document.getElementById('hwSubmitButton').textContent = '🚀 Publish Assignment';
+      document.getElementById('hwCancelEdit').hidden = true;
+    }
+
+    async function loadTeacherAssignmentManager() {
+      const list = document.getElementById('teacherAssignmentManageList');
+      const { data, error } = await supabaseClient.from('assignments').select('*').order('due_date', { ascending: true });
+      if (error) {
+        list.textContent = 'Could not load assignments: ' + error.message;
+        return;
+      }
+      list.innerHTML = '';
+      if (!data || !data.length) {
+        list.textContent = 'No published assignments yet.';
+        return;
+      }
+      data.forEach(assignment => {
+        const card = document.createElement('div');
+        card.className = 'student-row';
+        card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;';
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = assignment.title + ' — ' + assignment.subject;
+        const meta = document.createElement('p');
+        meta.style.cssText = 'font-size:.8rem;color:var(--text-secondary);margin:4px 0 0;';
+        meta.textContent = 'Due: ' + assignment.due_date + ' • ' + (assignment.target_code === 'ALL' ? 'All students' : assignment.target_code);
+        info.append(title, meta);
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+        const edit = document.createElement('button');
+        edit.type = 'button'; edit.className = 'btn teacher-secondary-action'; edit.textContent = '✏️ Edit';
+        edit.addEventListener('click', () => {
+          document.getElementById('hwAssignmentId').value = assignment.id;
+          document.getElementById('hwTitle').value = assignment.title || '';
+          document.getElementById('hwSubject').value = assignment.subject || '';
+          document.getElementById('hwDue').value = assignment.due_date || '';
+          document.getElementById('hwTarget').value = assignment.target_code || 'ALL';
+          document.getElementById('hwSubmitButton').textContent = '💾 Save Changes';
+          document.getElementById('hwCancelEdit').hidden = false;
+          document.getElementById('assignHwForm').scrollIntoView({behavior:'smooth',block:'center'});
+          document.getElementById('hwTitle').focus({preventScroll:true});
+        });
+        const del = document.createElement('button');
+        del.type = 'button'; del.className = 'btn'; del.style.background = '#dc2626'; del.textContent = '🗑️ Delete';
+        del.addEventListener('click', async () => {
+          if (!window.confirm('Delete "' + (assignment.title || 'this assignment') + '"? This removes the published assignment. This action cannot be undone.')) return;
+          del.disabled = true;
+          const { error: deleteError } = await supabaseClient.from('assignments').delete().eq('id', assignment.id);
+          if (deleteError) {
+            del.disabled = false;
+            alert('Could not delete assignment: ' + deleteError.message);
+            return;
+          }
+          if (document.getElementById('hwAssignmentId').value === String(assignment.id)) resetAssignmentForm();
+          await loadTeacherAssignmentManager();
+          await loadAssignmentOverview();
+          alert('Assignment deleted.');
+        });
+        actions.append(edit, del);
+        card.append(info, actions);
+        list.appendChild(card);
+      });
+    }
+
+    document.getElementById('hwCancelEdit').addEventListener('click', resetAssignmentForm);
+    document.getElementById('refreshTeacherAssignments').addEventListener('click', loadTeacherAssignmentManager);
+
     document.getElementById('assignHwForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const title = document.getElementById('hwTitle').value;
-      const subject = document.getElementById('hwSubject').value;
+      const id = document.getElementById('hwAssignmentId').value;
+      const title = document.getElementById('hwTitle').value.trim();
+      const subject = document.getElementById('hwSubject').value.trim();
       const due_date = document.getElementById('hwDue').value;
       const target_code = document.getElementById('hwTarget').value || 'ALL';
-
-      const { error } = await supabaseClient.from('assignments').insert([{ title, subject, due_date, target_code }]);
-      if (error) return alert('Error: ' + error.message);
-      alert('🎉 Assignment published successfully!');
-      e.target.reset();
-      document.getElementById('hwTarget').value = 'ALL';
+      const payload = { title, subject, due_date, target_code };
+      const result = id
+        ? await supabaseClient.from('assignments').update(payload).eq('id', id)
+        : await supabaseClient.from('assignments').insert([payload]);
+      if (result.error) return alert('Error: ' + result.error.message);
+      alert(id ? '✅ Assignment updated successfully!' : '🎉 Assignment published successfully!');
+      resetAssignmentForm();
+      await loadTeacherAssignmentManager();
       await loadAssignmentOverview();
     });
 
 
     document.querySelectorAll('#aurawaySidebar .nav-links a').forEach(link => {
       link.addEventListener('click', event => {
-        const target = document.querySelector(link.getAttribute('href'));
-        if (target) { event.preventDefault(); target.scrollIntoView({behavior:'smooth',block:'start'}); }
+        const href = link.getAttribute('href');
+        const target = href ? document.querySelector(href) : null;
+
+        // Subpages hide the normal dashboard sections. Restore them before
+        // navigating to Overview, or a scroll to a hidden section does nothing.
+        if (href === '#teacherCommandCenter' && activeTeacherSubpage) {
+          event.preventDefault();
+          closeTeacherSubpage();
+        } else if (href === '#teacherAssignmentsSection') {
+          event.preventDefault();
+          openTeacherSubpage('assignments');
+          loadTeacherAssignmentManager();
+        } else if (href === '#teacherAssignmentStatusPage') {
+          event.preventDefault();
+          openTeacherSubpage('status');
+        } else if (target && !target.hidden) {
+          event.preventDefault();
+          target.scrollIntoView({behavior:'smooth',block:'start'});
+        }
+
         if (window.matchMedia('(max-width: 767px)').matches) {
           document.body.classList.remove('sidebar-open');
           document.body.classList.add('sidebar-collapsed');
@@ -1012,8 +1392,197 @@
         }
       });
     });
+
+    let teacherQuizQuestions = [];
+    let teacherQuizVisibleCount = 2;
+    const TEACHER_QUIZ_INITIAL_COUNT = 2;
+    const TEACHER_QUIZ_PAGE_SIZE = 3;
+
+    function renderTeacherQuizQuestionList() {
+      const list = document.getElementById('teacherQuizQuestionList');
+      if (!list) return;
+      list.replaceChildren();
+      if (!teacherQuizQuestions.length) {
+        const empty = document.createElement('p');
+        empty.className = 'quiz-status';
+        empty.textContent = 'No questions found for this subject yet.';
+        list.append(empty);
+        return;
+      }
+      const visibleQuestions = teacherQuizQuestions.slice(0, teacherQuizVisibleCount);
+      visibleQuestions.forEach(question => {
+        const card = document.createElement('article'); card.className = 'quiz-manager-question';
+        const top = document.createElement('div'); top.style.cssText = 'display:flex;justify-content:space-between;gap:8px;align-items:flex-start;';
+        const title = document.createElement('strong'); title.textContent = question.subject;
+        const status = document.createElement('span'); status.textContent = question.is_active ? 'Active' : 'Inactive';
+        status.style.cssText = 'font-size:.72rem;font-weight:700;color:' + (question.is_active ? '#10b981' : '#f59e0b');
+        top.append(title,status);
+        const body = document.createElement('p'); body.textContent = question.question;
+        const answer = document.createElement('p');
+        const letters = ['A','B','C','D'];
+        answer.textContent = 'Correct: ' + letters[question.correct_option] + ' · ' + (question.options?.[question.correct_option] || '');
+        card.append(top,body,answer);
+        const actions = document.createElement('div'); actions.className = 'quiz-manager-actions';
+        const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn teacher-secondary-action'; edit.textContent = 'Edit';
+        edit.addEventListener('click', () => {
+          document.getElementById('teacherQuizQuestionId').value = question.id;
+          document.getElementById('teacherQuizSubject').value = question.subject;
+          document.getElementById('teacherQuizQuestionText').value = question.question;
+          (question.options || []).forEach((option,index) => { const field=document.getElementById('teacherQuizOption'+index); if(field) field.value=option; });
+          document.getElementById('teacherQuizCorrectOption').value = String(question.correct_option);
+          document.getElementById('teacherQuizExplanation').value = question.explanation || '';
+          document.getElementById('teacherQuizFormHeading').textContent = 'Edit question #' + question.id;
+          document.getElementById('teacherQuizSaveButton').textContent = 'Update question';
+          document.getElementById('teacherQuizFormMessage').textContent = 'Editing this question will update it in the shared daily question bank.';
+          document.getElementById('teacherQuizManager').scrollIntoView({behavior:'smooth',block:'start'});
+        });
+        const toggle = document.createElement('button'); toggle.type='button'; toggle.className='btn teacher-secondary-action'; toggle.textContent=question.is_active?'Deactivate':'Activate';
+        toggle.addEventListener('click', async () => {
+          toggle.disabled=true;
+          const {error:toggleError}=await supabaseClient.rpc('pulse_teacher_set_quiz_question_active',{p_id:question.id,p_active:!question.is_active});
+          if(toggleError){document.getElementById('teacherQuizListMessage').textContent='Could not update question: '+toggleError.message;toggle.disabled=false;return;}
+          await loadTeacherQuizManager();
+        });
+        actions.append(edit,toggle); card.append(actions); list.append(card);
+      });
+
+      const controls = document.createElement('div');
+      controls.className = 'quiz-bank-pagination';
+      const progress = document.createElement('span');
+      progress.className = 'quiz-bank-progress';
+      progress.textContent = 'Showing ' + visibleQuestions.length + ' of ' + teacherQuizQuestions.length + ' questions';
+      controls.append(progress);
+      if (teacherQuizVisibleCount > TEACHER_QUIZ_INITIAL_COUNT) {
+        const less = document.createElement('button');
+        less.type = 'button'; less.className = 'btn teacher-secondary-action'; less.textContent = 'Show less';
+        less.addEventListener('click', () => {
+          teacherQuizVisibleCount = TEACHER_QUIZ_INITIAL_COUNT;
+          renderTeacherQuizQuestionList();
+        });
+        controls.append(less);
+      }
+      if (visibleQuestions.length < teacherQuizQuestions.length) {
+        const more = document.createElement('button');
+        more.type = 'button'; more.className = 'btn'; more.textContent = 'Show 3 more ↓';
+        more.addEventListener('click', () => {
+          teacherQuizVisibleCount = Math.min(teacherQuizVisibleCount + TEACHER_QUIZ_PAGE_SIZE, teacherQuizQuestions.length);
+          renderTeacherQuizQuestionList();
+        });
+        controls.append(more);
+      }
+      list.append(controls);
+    }
+
+    function resetTeacherQuizForm() {
+      document.getElementById('teacherQuizQuestionForm').reset();
+      document.getElementById('teacherQuizQuestionId').value = '';
+      document.getElementById('teacherQuizFormHeading').textContent = '＋ Add a question';
+      document.getElementById('teacherQuizSaveButton').textContent = 'Save question';
+      document.getElementById('teacherQuizFormMessage').textContent = '';
+    }
+
+    async function loadTeacherQuizManager() {
+      const list = document.getElementById('teacherQuizQuestionList');
+      if (!list || !supabaseClient) return;
+      list.innerHTML = '<p class="quiz-status">Loading question bank…</p>';
+      const subject = document.getElementById('teacherQuizFilter')?.value || null;
+      const { data, error } = await supabaseClient.rpc('pulse_teacher_list_quiz_questions', { p_subject: subject });
+      if (error) {
+        list.textContent = 'Could not load question bank: ' + error.message;
+        document.getElementById('teacherQuizListMessage').textContent = 'Check that you are signed in with the authorised teacher account.';
+        return;
+      }
+      teacherQuizQuestions = data || [];
+      document.getElementById('teacherQuizQuestionCount').textContent = teacherQuizQuestions.length + ' questions';
+      document.getElementById('teacherQuizListMessage').textContent = 'Questions marked Active can be selected for daily student quizzes.';
+      teacherQuizQuestions = data || [];
+      teacherQuizVisibleCount = TEACHER_QUIZ_INITIAL_COUNT;
+      document.getElementById('teacherQuizQuestionCount').textContent = teacherQuizQuestions.length + ' questions';
+      document.getElementById('teacherQuizListMessage').textContent = 'Questions marked Active can be selected for daily student quizzes.';
+      renderTeacherQuizQuestionList();
+    }
+
+    document.getElementById('teacherQuizQuestionForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const save = document.getElementById('teacherQuizSaveButton');
+      const msg = document.getElementById('teacherQuizFormMessage');
+      const options = [0,1,2,3].map(index => document.getElementById('teacherQuizOption'+index).value.trim());
+      if (options.some(option => !option)) { msg.textContent='Please complete all four options.'; return; }
+      save.disabled = true; msg.textContent = 'Saving question…';
+      try {
+        const idValue = document.getElementById('teacherQuizQuestionId').value;
+        const {error} = await supabaseClient.rpc('pulse_teacher_save_quiz_question', {
+          p_id: idValue ? Number(idValue) : null,
+          p_subject: document.getElementById('teacherQuizSubject').value,
+          p_question: document.getElementById('teacherQuizQuestionText').value.trim(),
+          p_options: options,
+          p_correct_option: Number(document.getElementById('teacherQuizCorrectOption').value),
+          p_explanation: document.getElementById('teacherQuizExplanation').value.trim()
+        });
+        if (error) throw error;
+        resetTeacherQuizForm();
+        document.getElementById('teacherQuizFormMessage').textContent = 'Question saved successfully.';
+        await loadTeacherQuizManager();
+      } catch (error) {
+        msg.textContent = error.message || 'Could not save question.';
+      } finally { save.disabled = false; }
+    });
+    document.getElementById('teacherQuizResetButton').addEventListener('click', resetTeacherQuizForm);
+    document.getElementById('teacherQuizRefreshButton').addEventListener('click', loadTeacherQuizManager);
+    document.getElementById('teacherQuizFilter').addEventListener('change', loadTeacherQuizManager);
   </script>
   <script src="navigation.js" defer></script>
+<script>
+(function(){
+  const form=document.getElementById('teacherTimetableForm');
+  if(!form)return;
+  const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  let editingId=null,teacherUserId=null,rows=[];
+  const el=id=>document.getElementById(id);
+  function message(text,isError=false){el('ttTeacherMessage').textContent=text;el('ttTeacherMessage').style.color=isError?'#ef4444':'var(--text-secondary)'}
+  function resetForm(){editingId=null;form.reset();el('ttTeacherStart').value='09:00';el('ttTeacherEnd').value='09:45';el('ttTeacherSave').textContent='＋ Add period';el('ttTeacherCancel').hidden=true}
+  function render(){
+    const box=el('teacherTimetableList');box.replaceChildren();
+    if(!rows.length){const p=document.createElement('p');p.style.color='var(--text-secondary)';p.textContent='No periods published yet. Add the first period above.';box.append(p);return}
+    days.forEach(day=>{
+      const dayRows=rows.filter(r=>r.day_of_week===day);if(!dayRows.length)return;
+      const wrap=document.createElement('section');wrap.style.cssText='border:1px solid var(--border-color);border-radius:12px;padding:12px;';
+      const h=document.createElement('h4');h.textContent=day;h.style.margin='0 0 8px';wrap.append(h);
+      dayRows.forEach(row=>{
+        const line=document.createElement('div');line.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--border-color);';
+        const info=document.createElement('div');info.style.minWidth='0';
+        const title=document.createElement('strong');title.textContent=row.title;
+        const meta=document.createElement('small');meta.style.cssText='display:block;color:var(--text-secondary);margin-top:3px';meta.textContent=[String(row.start_time).slice(0,5)+'–'+String(row.end_time).slice(0,5),row.period_type,row.room,row.note].filter(Boolean).join(' · ');
+        info.append(title,meta);
+        const actions=document.createElement('div');actions.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+        const edit=document.createElement('button');edit.type='button';edit.className='btn teacher-secondary-action';edit.textContent='Edit';edit.addEventListener('click',()=>{editingId=row.id;el('ttTeacherDay').value=row.day_of_week;el('ttTeacherType').value=row.period_type;el('ttTeacherTitle').value=row.title;el('ttTeacherRoom').value=row.room||'';el('ttTeacherStart').value=String(row.start_time).slice(0,5);el('ttTeacherEnd').value=String(row.end_time).slice(0,5);el('ttTeacherNote').value=row.note||'';el('ttTeacherSave').textContent='Save changes';el('ttTeacherCancel').hidden=false;form.scrollIntoView({behavior:'smooth',block:'center'});el('ttTeacherTitle').focus()});
+        const del=document.createElement('button');del.type='button';del.className='btn teacher-secondary-action';del.textContent='Remove';del.addEventListener('click',async()=>{if(!confirm('Remove this timetable period?'))return;const {error}=await supabaseClient.from('pulse_timetable').delete().eq('id',row.id);if(error){message('Could not remove this period. Check teacher access.',true);return}message('Period removed.');await load()});
+        actions.append(edit,del);line.append(info,actions);wrap.append(line);
+      });box.append(wrap);
+    });
+  }
+  async function load(){const {data,error}=await supabaseClient.from('pulse_timetable').select('*').order('day_of_week').order('start_time');if(error){message('Could not load timetable: '+error.message,true);return}rows=data||[];render()}
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const {data:sessionData}=await supabaseClient.auth.getSession();const session=sessionData?.session;
+    if(!session||!(session.user.email?.toLowerCase()==='teacher@auraway.app'||['teacher','school_admin'].includes(session.user.app_metadata?.role))){message('Teacher sign-in required. Students and parents cannot edit.',true);return}
+    const day=el('ttTeacherDay').value,start=el('ttTeacherStart').value,end=el('ttTeacherEnd').value;
+    if(end<=start){message('End time must be later than start time.',true);return}
+    const startMin=Number(start.slice(0,2))*60+Number(start.slice(3)),endMin=Number(end.slice(0,2))*60+Number(end.slice(3));
+    const clash=rows.some(r=>r.day_of_week===day&&r.id!==editingId&&startMin<Number(String(r.end_time).slice(0,2))*60+Number(String(r.end_time).slice(3))&&endMin>Number(String(r.start_time).slice(0,2))*60+Number(String(r.start_time).slice(3)));
+    if(clash){message('This period overlaps another period on that day.',true);return}
+    const payload={day_of_week:day,period_type:el('ttTeacherType').value,title:el('ttTeacherTitle').value.trim(),room:el('ttTeacherRoom').value.trim(),start_time:start,end_time:end,note:el('ttTeacherNote').value.trim(),updated_by:session.user.id};
+    const result=editingId?await supabaseClient.from('pulse_timetable').update(payload).eq('id',editingId):await supabaseClient.from('pulse_timetable').insert(payload);
+    if(result.error){message('Save failed: '+result.error.message,true);return}
+    message(editingId?'Timetable period updated.':'Timetable period published.');resetForm();await load();
+  });
+  el('ttTeacherCancel').addEventListener('click',resetForm);
+  el('refreshTeacherTimetable').addEventListener('click',load);
+  async function init(){const {data,error}=await supabaseClient.auth.getSession();const s=data?.session;if(error||!(s?.user?.email?.toLowerCase()==='teacher@auraway.app'||['teacher','school_admin'].includes(s?.user?.app_metadata?.role))){message('Sign in with the authorised teacher account to manage the timetable.',true);form.querySelectorAll('input,select,button').forEach(x=>x.disabled=true);return}teacherUserId=s.user.id;await load()}
+  document.addEventListener('DOMContentLoaded',init,{once:true});
+  if(document.readyState!=='loading')init();
+})();
+</script>
   <script src="back-navigation.js" defer></script>
 </body>
 </html>

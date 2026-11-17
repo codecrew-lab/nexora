@@ -49,6 +49,7 @@
     .pill-absent { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
     .pill-leave { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
   </style>
+  <script src="portal-switcher.js" defer></script>
 </head>
 <body>
   <div class="app-container">
@@ -131,6 +132,22 @@
 
     const attHistoryList = document.getElementById('attHistoryList');
 
+    function attendanceTimeDetails(record) {
+      if (!record?.created_at) return '';
+      const instant = new Date(record.created_at);
+      if (Number.isNaN(instant.getTime())) return '';
+      const displayTime = instant.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
+      });
+      if (record.marked_by == null && record.status === 'Present') {
+        const clock = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).format(instant);
+        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
+      }
+      return 'Recorded: ' + displayTime;
+    }
+
     function renderAttendance(rows) {
       attHistoryList.innerHTML = '';
       const total = rows.length;
@@ -158,6 +175,13 @@
         status.className = 'status-pill ' + pillClass;
         status.textContent = item.status;
         row.append(date, status);
+        const timingText = attendanceTimeDetails(item);
+        if (timingText) {
+          const timing = document.createElement('small');
+          timing.textContent = timingText;
+          timing.style.cssText = 'display:block;flex-basis:100%;margin-top:4px;color:var(--text-secondary);font-size:.78rem;';
+          row.appendChild(timing);
+        }
         attHistoryList.appendChild(row);
       });
     }
@@ -170,7 +194,7 @@
         return;
       }
       attHistoryList.textContent = 'Loading teacher attendance…';
-      const { data, error } = await supabaseClient.from('attendance_records').select('attendance_date,status').eq('student_code', code).order('attendance_date', { ascending: false }).limit(365);
+      const { data, error } = await supabaseClient.from('attendance_records').select('attendance_date,status,created_at,marked_by').eq('student_code', code).order('attendance_date', { ascending: false }).limit(365);
       if (error) {
         attHistoryList.textContent = 'Could not load attendance. Your school administrator may need to run the attendance SQL setup.';
         console.error('Attendance lookup failed:', error);

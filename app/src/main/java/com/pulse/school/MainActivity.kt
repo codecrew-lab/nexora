@@ -1,8 +1,10 @@
 package com.pulse.school
 
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.webkit.WebChromeClient
@@ -24,13 +26,10 @@ open class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val customUrl = intent.getStringExtra("TARGET_URL")
-        if (!customUrl.isNullOrEmpty()) {
-            targetUrl = customUrl
-        }
-        val customName = intent.getStringExtra("PORTAL_NAME")
-        if (!customName.isNullOrEmpty()) {
-            portalName = customName
+        // Portal activities choose their own bundled asset. Never accept a URL
+        // supplied by an external Intent.
+        if (!isTrustedAssetUrl(targetUrl)) {
+            targetUrl = "file:///android_asset/index.html"
         }
 
         binding.tvHeaderTitle.text = portalName
@@ -42,19 +41,48 @@ open class MainActivity : AppCompatActivity() {
         binding.webView.loadUrl(targetUrl)
     }
 
+    private fun isTrustedAssetUrl(value: String): Boolean {
+        return runCatching {
+            val uri = Uri.parse(value)
+            val path = uri.path.orEmpty()
+            uri.scheme == "file" &&
+                uri.authority.isNullOrEmpty() &&
+                path.startsWith("/android_asset/") &&
+                path.split('/').none { it == ".." }
+        }.getOrDefault(false)
+    }
+
+    private fun openExternalHttps(value: String) {
+        val uri = runCatching { Uri.parse(value) }.getOrNull() ?: return
+        if (uri.scheme != "https" || uri.host.isNullOrBlank()) return
+
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (_: ActivityNotFoundException) {
+            // Leave the current trusted portal open if no browser can handle it.
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
         val settings: WebSettings = binding.webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.allowFileAccess = true
-        settings.allowContentAccess = true
+        settings.allowContentAccess = false
+        settings.allowFileAccessFromFileURLs = false
+        settings.allowUniversalAccessFromFileURLs = false
         settings.databaseEnabled = true
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
         settings.cacheMode = WebSettings.LOAD_DEFAULT
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            settings.safeBrowsingEnabled = true
+        }
 
-        binding.webView.addJavascriptInterface(WebAppInterface(this, portalName), "Android")
+        // No JavaScript-to-native bridge is needed by the bundled portal pages.
+        // Removing it prevents web content from invoking Android app methods.
 
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -68,12 +96,19 @@ open class MainActivity : AppCompatActivity() {
                 binding.swipeRefresh.isRefreshing = false
             }
 
+            override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                val url = request?.url?.toString() ?: return true
+                if (isTrustedAssetUrl(url)) return false
+                if (Uri.parse(url).scheme == "https") openExternalHttps(url)
+                return true
+            }
+
+            @Suppress("DEPRECATION")
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                if (url != null && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:///"))) {
-                    view?.loadUrl(url)
-                    return true
-                }
-                return false
+                val value = url ?: return true
+                if (isTrustedAssetUrl(value)) return false
+                if (Uri.parse(value).scheme == "https") openExternalHttps(value)
+                return true
             }
         }
 

@@ -68,6 +68,7 @@
       margin: 0 auto;
     }
   </style>
+  <script src="portal-switcher.js" defer></script>
 </head>
 <body>
   <div class="app-container">
@@ -81,6 +82,7 @@
         <li><a href="planner.html">📅 Study Planner</a></li>
         <li><a href="timetable.html">🗓️ Timetable</a></li>
         <li><a href="exam.html">🎯 Exams</a></li>
+        <li><a href="calendar.html">🗓️ Academic Calendar</a></li>
         <li><a href="marks.html">📈 Marks Manager</a></li>
         <li><a href="attendance.html">📋 Attendance</a></li>
         <li><a href="flashcards.html">🗂️ Flashcards</a></li>
@@ -153,23 +155,52 @@
     const examForm = document.getElementById('examForm');
     const examsList = document.getElementById('examsList');
 
-    let exams = JSON.parse(localStorage.getItem('auraway_exams')) || [
-      { id: 1, subject: 'Social Science Term Exam', date: '2026-11-24', totalChapters: 10, completedChapters: 6 },
-      { id: 2, subject: 'IT Practical & Theory', date: '2026-11-18', totalChapters: 5, completedChapters: 4 }
-    ];
+    // Use the same saved exam list as the dashboard. Never show demo exams as real school dates.
+    let exams = [];
+    try {
+      const savedExams = JSON.parse(localStorage.getItem('auraway_exams') || '[]');
+      exams = Array.isArray(savedExams) ? savedExams.filter(exam =>
+        exam && typeof exam.subject === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(exam.date || '')
+      ) : [];
+    } catch (error) {
+      console.warn('Saved exam list was invalid; starting with an empty list.', error);
+      exams = [];
+    }
 
     function saveAndRenderExams() {
       localStorage.setItem('auraway_exams', JSON.stringify(exams));
       renderExams();
     }
 
+    function getExamTarget(dateStr) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return null;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const target = new Date(year, month - 1, day, 23, 59, 59, 999);
+      if (target.getFullYear() !== year || target.getMonth() !== month - 1 || target.getDate() !== day) return null;
+      return Number.isNaN(target.getTime()) ? null : target;
+    }
+
     function calculateDaysLeft(dateStr) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return -1;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const targetDay = new Date(year, month - 1, day);
+      if (targetDay.getFullYear() !== year || targetDay.getMonth() !== month - 1 || targetDay.getDate() !== day) return -1;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const target = new Date(dateStr);
-      target.setHours(0, 0, 0, 0);
-      const diffTime = target - today;
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.round((targetDay - today) / 86400000);
+    }
+
+    function formatExamCountdown(dateStr) {
+      const target = getExamTarget(dateStr);
+      if (!target) return 'Date unavailable';
+      const now = new Date();
+      const remaining = target.getTime() - now.getTime();
+      if (remaining <= 0) return 'Exam day';
+      const days = Math.floor(remaining / 86400000);
+      const hours = Math.floor((remaining % 86400000) / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      return days + 'd ' + hours + 'h ' + minutes + 'm left';
     }
 
     function renderExams() {
@@ -186,7 +217,7 @@
         const daysLeft = calculateDaysLeft(exam.date);
         const pct = Math.min(100, Math.round((exam.completedChapters / exam.totalChapters) * 100));
         
-        let badgeText = daysLeft > 1 ? `${daysLeft} Days Left` : daysLeft === 1 ? 'Tomorrow!' : daysLeft === 0 ? 'Today!' : 'Completed';
+        let badgeText = daysLeft >= 0 ? formatExamCountdown(exam.date) : 'Completed';
         let isUrgent = daysLeft >= 0 && daysLeft <= 5;
 
         const div = document.createElement('div');
@@ -253,6 +284,7 @@
     };
 
     renderExams();
+    window.setInterval(renderExams, 60000);
   </script>
   <script src="navigation.js" defer></script>
   <script src="back-navigation.js" defer></script>
