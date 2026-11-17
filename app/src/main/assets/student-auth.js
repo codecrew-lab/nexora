@@ -1,6 +1,6 @@
 ﻿// NEXORA student authentication.
 // Student identity is established by a Supabase Auth session, never by localStorage alone.
-const NEXORA_STUDENT_EMAIL_SUFFIX = "@students.NEXORA.app";
+const NEXORA_STUDENT_EMAIL_SUFFIX = "@students.pulse.app";
 
 function NEXORAStudentEmail(code) {
   return String(code || "").trim().toLowerCase() + NEXORA_STUDENT_EMAIL_SUFFIX;
