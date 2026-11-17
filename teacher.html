@@ -1015,15 +1015,13 @@
     document.getElementById('refreshTeacherAnalytics').addEventListener('click',loadTeacherAnalytics);
     window.addEventListener('resize',()=>{if(document.getElementById('teacherAnalyticsSection'))loadTeacherAnalytics();});
 
-    async function loadStudentActivity() {
+    let studentActivityItems = [];
+    let studentActivityLimit = 3;
+
+    function renderStudentActivity() {
       const feed = document.getElementById('studentActivityFeed');
-      const { data, error } = await supabaseClient.from('student_updates').select('*').order('updated_at', { ascending: false }).limit(20);
-      if (error || !data || data.length === 0) {
-        feed.innerHTML = '<p style="color:var(--text-secondary);">No student updates yet.</p>';
-        return;
-      }
       feed.innerHTML = '';
-      data.forEach(item => {
+      studentActivityItems.slice(0, studentActivityLimit).forEach(item => {
         const div = document.createElement('div');
         div.className = 'student-row';
         const detail = item.status === 'Completed'
@@ -1039,6 +1037,31 @@
         `;
         feed.appendChild(div);
       });
+      if (studentActivityItems.length > studentActivityLimit) {
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'btn teacher-secondary-action';
+        more.style.cssText = 'display:block;margin:14px auto 4px;padding:10px 22px;';
+        more.textContent = 'Show 4 more (' + (studentActivityItems.length - studentActivityLimit) + ' remaining)';
+        more.addEventListener('click', () => {
+          studentActivityLimit += 4;
+          renderStudentActivity();
+        });
+        feed.appendChild(more);
+      }
+    }
+
+    async function loadStudentActivity() {
+      const feed = document.getElementById('studentActivityFeed');
+      const { data, error } = await supabaseClient.from('student_updates').select('*').order('updated_at', { ascending: false }).limit(100);
+      if (error || !data || data.length === 0) {
+        studentActivityItems = [];
+        feed.innerHTML = '<p style="color:var(--text-secondary);">No student updates yet.</p>';
+        return;
+      }
+      studentActivityItems = data;
+      studentActivityLimit = 3;
+      renderStudentActivity();
     }
 
     function toggleSelectAll() {
