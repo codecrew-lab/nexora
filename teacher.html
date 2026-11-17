@@ -469,6 +469,7 @@
     });
 
     let allStudents = [];
+    let teacherRosterLimit = 4;
 
     async function loadStudentsRoster() {
       const container = document.getElementById('studentsRosterList');
@@ -488,6 +489,7 @@
         return;
       }
       container.innerHTML = '';
+      teacherRosterLimit = 4;
       allStudents.forEach(st => {
         const div = document.createElement('div');
         div.className = 'student-row';
@@ -543,21 +545,44 @@
     function filterTeacherRoster() {
       const search = (document.getElementById('teacherStudentSearch')?.value || '').trim().toLowerCase();
       const className = document.getElementById('teacherStudentClassFilter')?.value || '';
-      const rows = [...document.querySelectorAll('#studentsRosterList .student-row')];
-      let visible = 0;
-      rows.forEach(row => {
+      const container = document.getElementById('studentsRosterList');
+      const rows = [...container.querySelectorAll('.student-row')];
+      const matchingRows = rows.filter(row => {
         const matchesSearch = !search || row.dataset.studentName.includes(search) || row.dataset.studentClass.includes(search) || row.dataset.studentCode.includes(search);
         const matchesClass = !className || row.dataset.studentClass === className;
-        const show = matchesSearch && matchesClass;
-        row.hidden = !show;
-        if (show) visible++;
+        return matchesSearch && matchesClass;
       });
+      rows.forEach(row => { row.hidden = true; });
+      matchingRows.slice(0, teacherRosterLimit).forEach(row => { row.hidden = false; });
+
+      container.querySelector('#teacherRosterMore')?.remove();
+      const shown = Math.min(teacherRosterLimit, matchingRows.length);
       const count = document.getElementById('teacherRosterCount');
-      if (count) count.textContent = visible + ' of ' + allStudents.length + ' students';
+      if (count) count.textContent = 'Showing ' + shown + ' of ' + matchingRows.length + ' matching students';
+
+      if (matchingRows.length > shown) {
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.id = 'teacherRosterMore';
+        more.className = 'btn teacher-secondary-action';
+        more.style.cssText = 'display:block;margin:14px auto 4px;padding:10px 22px;';
+        more.textContent = 'Show 5 more (' + (matchingRows.length - shown) + ' remaining)';
+        more.addEventListener('click', () => {
+          teacherRosterLimit += 5;
+          filterTeacherRoster();
+        });
+        container.appendChild(more);
+      }
     }
 
-    document.getElementById('teacherStudentSearch').addEventListener('input', filterTeacherRoster);
-    document.getElementById('teacherStudentClassFilter').addEventListener('change', filterTeacherRoster);
+    document.getElementById('teacherStudentSearch').addEventListener('input', () => {
+      teacherRosterLimit = 4;
+      filterTeacherRoster();
+    });
+    document.getElementById('teacherStudentClassFilter').addEventListener('change', () => {
+      teacherRosterLimit = 4;
+      filterTeacherRoster();
+    });
 
     function populateTeacherMarkStudents() {
       const select = document.getElementById('teacherMarkStudent');
