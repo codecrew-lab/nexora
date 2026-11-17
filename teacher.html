@@ -69,12 +69,12 @@
         <h1 style="margin:0;">PULSE-T — Teacher Sign In 👩‍🏫</h1>
       </div>
       <p style="color:var(--text-secondary);margin:8px 0 16px;">Enter your login code and secret access code to continue.</p>
-      <div class="portal-form" id="teacherLoginForm">
+      <form class="portal-form" id="teacherLoginForm">
         <input id="teacherLoginCode" class="input-field" type="password" inputmode="numeric" autocomplete="off" placeholder="Login Code" required>
         <input id="teacherAccessCode" class="input-field" type="password" autocomplete="current-password" placeholder="Secret Access Code" required>
-        <button class="btn" id="teacherLoginButton" type="button">Sign In</button>
+        <button class="btn" id="teacherLoginButton" type="submit">Sign In</button>
         <p id="teacherLoginError" role="alert" aria-live="polite" style="color:#ef4444;"></p>
-      </div>
+      </form>
     </div>
   </section>
   <div class="app-container" id="teacherAppContainer" style="display:none;">
@@ -382,7 +382,7 @@
     </form>
   </div>
   <script>
-    const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/bright-handler';
+    const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/teacher-access';
 
     async function showTeacherPortal(session) {
       const email = session?.user?.email?.toLowerCase();
@@ -410,7 +410,7 @@
       event.preventDefault();
       const loginCode = document.getElementById('teacherLoginCode').value.trim();
       const secretCode = document.getElementById('teacherAccessCode').value;
-      const button = event.currentTarget;
+      const button = document.getElementById('teacherLoginButton');
       const errorBox = document.getElementById('teacherLoginError');
       if (!supabaseClient || !loginCode || !secretCode) {
         errorBox.textContent = 'Enter both codes to continue.';
@@ -445,7 +445,6 @@
       }
     }
 
-    document.getElementById('teacherLoginButton').addEventListener('click', signInTeacher);
     document.getElementById('teacherLoginForm').addEventListener('submit', signInTeacher);
 
     document.getElementById('teacherSignOut').addEventListener('click', async () => {
