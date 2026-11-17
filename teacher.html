@@ -68,15 +68,12 @@
         </svg>
         <h1 style="margin:0;">PULSE-T — Teacher Sign In 👩‍🏫</h1>
       </div>
-      <p style="color:var(--text-secondary);margin:8px 0 16px;">Enter your teacher access code and name to continue.</p>
+      <p style="color:var(--text-secondary);margin:8px 0 16px;">Enter your login code and secret access code to continue.</p>
       <div class="portal-form" id="teacherLoginForm">
-        <input id="teacherDisplayName" class="input-field" type="text" placeholder="Your teacher name" autocomplete="name" required>
-        <input id="teacherAccessCode" class="input-field" type="password" placeholder="Teacher access code" autocomplete="current-password" required>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button class="btn" id="teacherLoginButton" type="button">Sign in</button>
-          <button class="btn" id="teacherSignupButton" type="button" style="background:#0f766e;">Sign up</button>
-        </div>
-        <p id="teacherLoginError" role="alert" style="color:#ef4444;"></p>
+        <input id="teacherLoginCode" class="input-field" type="password" inputmode="numeric" autocomplete="off" placeholder="Login Code" required>
+        <input id="teacherAccessCode" class="input-field" type="password" autocomplete="current-password" placeholder="Secret Access Code" required>
+        <button class="btn" id="teacherLoginButton" type="button">Sign In</button>
+        <p id="teacherLoginError" role="alert" aria-live="polite" style="color:#ef4444;"></p>
       </div>
     </div>
   </section>
@@ -409,24 +406,24 @@
       await loadTeacherQuizManager();
     }
 
-    async function requestTeacherAccess(action, event) {
+    async function signInTeacher(event) {
       event.preventDefault();
-      const name = document.getElementById('teacherDisplayName').value.trim();
-      const code = document.getElementById('teacherAccessCode').value;
+      const loginCode = document.getElementById('teacherLoginCode').value.trim();
+      const secretCode = document.getElementById('teacherAccessCode').value;
       const button = event.currentTarget;
       const errorBox = document.getElementById('teacherLoginError');
-      if (!supabaseClient || !name || !code) {
-        errorBox.textContent = 'Enter your first name and teacher access code.';
+      if (!supabaseClient || !loginCode || !secretCode) {
+        errorBox.textContent = 'Enter both codes to continue.';
         return;
       }
       button.disabled = true;
-      button.textContent = action === 'signup' ? 'Creating account…' : 'Signing in…';
+      button.textContent = 'Signing in…';
       errorBox.textContent = '';
       try {
         const response = await fetch(TEACHER_AUTH_FUNCTION_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
-          body: JSON.stringify({ action, first_name: name, access_code: code })
+          body: JSON.stringify({ action: 'signin', login_code: loginCode, access_code: secretCode })
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.token_hash) {
@@ -437,18 +434,19 @@
           type: 'magiclink'
         });
         if (error || !data.session) throw new Error('Could not create a secure teacher session. Please try again.');
+        document.getElementById('teacherLoginCode').value = '';
         document.getElementById('teacherAccessCode').value = '';
         await showTeacherPortal(data.session);
       } catch (error) {
         errorBox.textContent = error.message || 'Teacher sign-in failed. Please try again.';
       } finally {
         button.disabled = false;
-        button.textContent = action === 'signup' ? 'Create teacher account' : 'Sign in';
+        button.textContent = 'Sign In';
       }
     }
 
-    document.getElementById('teacherSignupButton').addEventListener('click', (event) => requestTeacherAccess('signup', event));
-    document.getElementById('teacherLoginButton').addEventListener('click', (event) => requestTeacherAccess('signin', event));
+    document.getElementById('teacherLoginButton').addEventListener('click', signInTeacher);
+    document.getElementById('teacherLoginForm').addEventListener('submit', signInTeacher);
 
     document.getElementById('teacherSignOut').addEventListener('click', async () => {
       await supabaseClient.auth.signOut();
@@ -461,7 +459,7 @@
         return;
       }
       const { data } = await supabaseClient.auth.getSession();
-      if (data.session?.user?.email?.toLowerCase() === 'teacher@auraway.app') await showTeacherPortal(data.session);
+      if (data.session?.user?.email?.toLowerCase() === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(data.session?.user?.app_metadata?.role)) await showTeacherPortal(data.session);
       else if (data.session) await supabaseClient.auth.signOut();
     })();
 
