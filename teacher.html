@@ -344,6 +344,7 @@
         <button type="button" class="btn teacher-secondary-action" id="backFromTeacherAssignments">← Back to dashboard</button>
       </div>
       <form id="assignHwForm" class="portal-form">
+        <input type="hidden" id="hwAssignmentId">
         <input type="text" id="hwTitle" class="input-field" placeholder="Homework Title" required>
         <input type="text" id="hwSubject" class="input-field" placeholder="Subject (e.g. Mathematics)" required>
         <input type="date" id="hwDue" class="input-field" required>
@@ -351,9 +352,17 @@
         <select id="hwTarget" class="input-field">
           <option value="ALL">All students</option>
         </select>
-        <button type="submit" class="btn">🚀 Publish Assignment</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="submit" class="btn" id="hwSubmitButton">🚀 Publish Assignment</button><button type="button" class="btn teacher-secondary-action" id="hwCancelEdit" hidden>Cancel edit</button></div>
         <p style="font-size:.8rem;color:var(--text-secondary);margin:0;">Choose all students or a class. Published assignments appear in the students' Classroom and parent portal.</p>
       </form>
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <h3 style="margin:0;">Manage Published Assignments</h3>
+          <button type="button" class="btn teacher-secondary-action" id="refreshTeacherAssignments">↻ Refresh</button>
+        </div>
+        <p style="font-size:.82rem;color:var(--text-secondary);">Edit assignment details or delete an assignment that is no longer needed.</p>
+        <div id="teacherAssignmentManageList" aria-live="polite"><p style="color:var(--text-secondary);">Loading assignments…</p></div>
+      </div>
     </section>
 
     <section id="teacherAssignmentStatusPage" class="card" hidden style="margin:0 0 20px;" aria-labelledby="teacherAssignmentStatusHeading">
@@ -997,6 +1006,8 @@
     }
 
     document.getElementById('openTeacherAssignmentsPage').addEventListener('click', () => openTeacherSubpage('assignments'));
+    document.getElementById('openTeacherAssignmentsPage').addEventListener('click', loadTeacherAssignmentManager);
+    document.getElementById('teacherAssignmentsNav').addEventListener('click', loadTeacherAssignmentManager);
     document.getElementById('teacherAssignmentsNav').addEventListener('click', event => { event.preventDefault(); openTeacherSubpage('assignments'); });
     document.getElementById('backFromTeacherAssignments').addEventListener('click', closeTeacherSubpage);
     document.getElementById('openAssignmentStatusFromDashboard').addEventListener('click', () => openTeacherSubpage('status'));
@@ -1250,18 +1261,93 @@
       loadStudentsRoster();
     });
 
+    function resetAssignmentForm() {
+      const form = document.getElementById('assignHwForm');
+      form.reset();
+      document.getElementById('hwAssignmentId').value = '';
+      document.getElementById('hwTarget').value = 'ALL';
+      document.getElementById('hwSubmitButton').textContent = '🚀 Publish Assignment';
+      document.getElementById('hwCancelEdit').hidden = true;
+    }
+
+    async function loadTeacherAssignmentManager() {
+      const list = document.getElementById('teacherAssignmentManageList');
+      const { data, error } = await supabaseClient.from('assignments').select('*').order('due_date', { ascending: true });
+      if (error) {
+        list.textContent = 'Could not load assignments: ' + error.message;
+        return;
+      }
+      list.innerHTML = '';
+      if (!data || !data.length) {
+        list.textContent = 'No published assignments yet.';
+        return;
+      }
+      data.forEach(assignment => {
+        const card = document.createElement('div');
+        card.className = 'student-row';
+        card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;';
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = assignment.title + ' — ' + assignment.subject;
+        const meta = document.createElement('p');
+        meta.style.cssText = 'font-size:.8rem;color:var(--text-secondary);margin:4px 0 0;';
+        meta.textContent = 'Due: ' + assignment.due_date + ' • ' + (assignment.target_code === 'ALL' ? 'All students' : assignment.target_code);
+        info.append(title, meta);
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+        const edit = document.createElement('button');
+        edit.type = 'button'; edit.className = 'btn teacher-secondary-action'; edit.textContent = '✏️ Edit';
+        edit.addEventListener('click', () => {
+          document.getElementById('hwAssignmentId').value = assignment.id;
+          document.getElementById('hwTitle').value = assignment.title || '';
+          document.getElementById('hwSubject').value = assignment.subject || '';
+          document.getElementById('hwDue').value = assignment.due_date || '';
+          document.getElementById('hwTarget').value = assignment.target_code || 'ALL';
+          document.getElementById('hwSubmitButton').textContent = '💾 Save Changes';
+          document.getElementById('hwCancelEdit').hidden = false;
+          document.getElementById('assignHwForm').scrollIntoView({behavior:'smooth',block:'center'});
+          document.getElementById('hwTitle').focus({preventScroll:true});
+        });
+        const del = document.createElement('button');
+        del.type = 'button'; del.className = 'btn'; del.style.background = '#dc2626'; del.textContent = '🗑️ Delete';
+        del.addEventListener('click', async () => {
+          if (!window.confirm('Delete "' + (assignment.title || 'this assignment') + '"? This removes the published assignment. This action cannot be undone.')) return;
+          del.disabled = true;
+          const { error: deleteError } = await supabaseClient.from('assignments').delete().eq('id', assignment.id);
+          if (deleteError) {
+            del.disabled = false;
+            alert('Could not delete assignment: ' + deleteError.message);
+            return;
+          }
+          if (document.getElementById('hwAssignmentId').value === String(assignment.id)) resetAssignmentForm();
+          await loadTeacherAssignmentManager();
+          await loadAssignmentOverview();
+          alert('Assignment deleted.');
+        });
+        actions.append(edit, del);
+        card.append(info, actions);
+        list.appendChild(card);
+      });
+    }
+
+    document.getElementById('hwCancelEdit').addEventListener('click', resetAssignmentForm);
+    document.getElementById('refreshTeacherAssignments').addEventListener('click', loadTeacherAssignmentManager);
+
     document.getElementById('assignHwForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const title = document.getElementById('hwTitle').value;
-      const subject = document.getElementById('hwSubject').value;
+      const id = document.getElementById('hwAssignmentId').value;
+      const title = document.getElementById('hwTitle').value.trim();
+      const subject = document.getElementById('hwSubject').value.trim();
       const due_date = document.getElementById('hwDue').value;
       const target_code = document.getElementById('hwTarget').value || 'ALL';
-
-      const { error } = await supabaseClient.from('assignments').insert([{ title, subject, due_date, target_code }]);
-      if (error) return alert('Error: ' + error.message);
-      alert('🎉 Assignment published successfully!');
-      e.target.reset();
-      document.getElementById('hwTarget').value = 'ALL';
+      const payload = { title, subject, due_date, target_code };
+      const result = id
+        ? await supabaseClient.from('assignments').update(payload).eq('id', id)
+        : await supabaseClient.from('assignments').insert([payload]);
+      if (result.error) return alert('Error: ' + result.error.message);
+      alert(id ? '✅ Assignment updated successfully!' : '🎉 Assignment published successfully!');
+      resetAssignmentForm();
+      await loadTeacherAssignmentManager();
       await loadAssignmentOverview();
     });
 
