@@ -17,73 +17,129 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
   try {
-    const accessCode = Deno.env.get("TEACHER_ACCESS_CODE");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!accessCode || !supabaseUrl || !serviceRoleKey) {
-      console.error("Teacher access function is missing required server secrets.");
-      return json({ error: "Teacher login is not configured yet." }, 503);
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Teacher access service is missing server configuration.");
+      return json({ error: "Teacher access is temporarily unavailable." }, 503);
     }
 
-    const body = await req.json();
-    const action = body?.action;
-    const firstName = typeof body?.first_name === "string" ? body.first_name.trim() : "";
-    const suppliedCode = typeof body?.access_code === "string" ? body.access_code : "";
+    const authorization = req.headers.get("Authorization") || "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!token) return json({ error: "Sign in before continuing." }, 401);
 
-    if (!["signup", "signin"].includes(action) || !firstName || firstName.length > 60 || !suppliedCode) {
-      return json({ error: "Enter a valid first name and access code." }, 400);
-    }
-    if (suppliedCode !== accessCode) {
-      return json({ error: "The teacher access code is incorrect." }, 401);
-    }
-
-    // This project uses one shared teacher identity because the school has one shared access code.
-    // The code is checked only on the server; it is never sent back to the browser.
-    const email = "teacher@auraway.app";
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+    const { data: authData, error: authError } = await admin.auth.getUser(token);
+    if (authError || !authData.user) return json({ error: "Your session is invalid. Sign in again." }, 401);
 
-    const { data: listed, error: listError } = await admin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    if (listError) throw listError;
+    const user = authData.user;
+    const role = user.app_metadata?.role;
+    const isSchoolAdmin = role === "school_admin";
+    const body = await req.json().catch(() => ({}));
+    const action = body?.action;
 
-    let teacher = listed.users.find((user) => user.email?.toLowerCase() === email);
-    if (!teacher && action === "signin") {
-      return json({ error: "No teacher account exists yet. Choose Sign up first." }, 404);
+    if (action === "request") {
+      if (role === "teacher" || isSchoolAdmin) {
+        return json({ status: "approved", message: "This account is already approved." });
+      }
+      const fullName = typeof body?.full_name === "string" ? body.full_name.trim() : "";
+      if (fullName.length < 2 || fullName.length > 100 || !user.email) {
+        return json({ error: "Enter your name and verify your email address." }, 400);
+      }
+
+      const { data: existing, error: lookupError } = await admin
+        .from("teacher_access_requests")
+        .select("id,status")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+
+      if (existing?.status === "approved") {
+        return json({ status: "approved", message: "This account is already approved." });
+      }
+      if (existing?.status === "pending") {
+        return json({ status: "pending", message: "Your request is waiting for school-admin approval." });
+      }
+
+      if (existing?.status === "rejected") {
+        const { error } = await admin.from("teacher_access_requests").update({
+          full_name: fullName,
+          email: user.email,
+          status: "pending",
+          created_at: new Date().toISOString(),
+          reviewed_at: null,
+          reviewed_by: null,
+        }).eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await admin.from("teacher_access_requests").insert({
+          user_id: user.id,
+          full_name: fullName,
+          email: user.email,
+          status: "pending",
+        });
+        if (error) throw error;
+      }
+      return json({ status: "pending", message: "Your request has been sent to the school administrator." });
     }
 
-    if (!teacher) {
-      const randomPassword = crypto.randomUUID() + crypto.randomUUID() + "Aa1!";
-      const { data, error } = await admin.auth.admin.createUser({
-        email,
-        password: randomPassword,
-        email_confirm: true,
-        user_metadata: { display_name: firstName },
-      });
+    if (!isSchoolAdmin) return json({ error: "Only an approved school administrator can perform this action." }, 403);
+
+    if (action === "list") {
+      const { data, error } = await admin.from("teacher_access_requests")
+        .select("id,user_id,full_name,email,status,created_at")
+        .eq("status", "pending")
+        .order("created_at", { ascending: true })
+        .limit(100);
       if (error) throw error;
-      teacher = data.user;
-    } else {
-      const { data, error } = await admin.auth.admin.updateUserById(teacher.id, {
-        user_metadata: { ...teacher.user_metadata, display_name: firstName },
-      });
-      if (error) throw error;
-      teacher = data.user;
+      return json({ requests: data || [] });
     }
 
-    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-    });
-    if (linkError) throw linkError;
+    const requestId = typeof body?.request_id === "string" ? body.request_id : "";
+    if (!requestId) return json({ error: "A valid request ID is required." }, 400);
 
-    const tokenHash = linkData.properties?.hashed_token;
-    if (!tokenHash) throw new Error("Supabase did not return a one-time sign-in token.");
-    return json({ token_hash: tokenHash });
+    const { data: request, error: requestError } = await admin
+      .from("teacher_access_requests")
+      .select("id,user_id,status")
+      .eq("id", requestId)
+      .maybeSingle();
+    if (requestError) throw requestError;
+    if (!request || request.status !== "pending") {
+      return json({ error: "This request is no longer pending." }, 404);
+    }
+
+    if (action === "approve") {
+      const { data: targetData, error: targetError } = await admin.auth.admin.getUserById(request.user_id);
+      if (targetError || !targetData.user) return json({ error: "The teacher account could not be found." }, 404);
+      const target = targetData.user;
+      const { error: roleError } = await admin.auth.admin.updateUserById(target.id, {
+        app_metadata: { ...target.app_metadata, role: "teacher" },
+      });
+      if (roleError) throw roleError;
+      const { error: updateError } = await admin.from("teacher_access_requests").update({
+        status: "approved",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user.id,
+      }).eq("id", request.id);
+      if (updateError) throw updateError;
+      return json({ status: "approved", message: "Teacher approved. They must sign in again to refresh their permissions." });
+    }
+
+    if (action === "reject") {
+      const { error } = await admin.from("teacher_access_requests").update({
+        status: "rejected",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user.id,
+      }).eq("id", request.id);
+      if (error) throw error;
+      return json({ status: "rejected", message: "Teacher request rejected." });
+    }
+
+    return json({ error: "Unsupported action." }, 400);
   } catch (error) {
-    console.error("Teacher access error:", error);
+    console.error("Teacher access request failed:", error);
     return json({ error: "Teacher access could not be completed. Please try again." }, 500);
   }
 });
