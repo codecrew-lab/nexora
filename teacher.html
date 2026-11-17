@@ -431,7 +431,7 @@
         }
         const { data, error } = await supabaseClient.auth.verifyOtp({
           token_hash: result.token_hash,
-          type: 'magiclink'
+          type: 'email'
         });
         if (error || !data.session) throw new Error('Could not create a secure teacher session. Please try again.');
         document.getElementById('teacherLoginCode').value = '';
