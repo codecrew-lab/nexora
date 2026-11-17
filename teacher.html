@@ -96,7 +96,7 @@
           <li><a href="#teacherTimetableManager">🗓️ <span>Timetable</span></a></li>
           <li><a href="#teacherAttendanceManager">📋 <span>Attendance</span></a></li>
           <li><a href="#teacherMarksSection">📝 <span>Marks</span></a></li>
-          <li><a href="#teacherAssignmentsSection">📚 <span>Assignments</span></a></li>
+          <li><a href="#teacherAssignmentsSection" id="teacherAssignmentsNav">📚 <span>Assignments</span></a></li>
           <li><a href="#teacherAssignmentStatusPage" id="teacherAssignmentStatusNav">📊 <span>Assignment Completion Status</span></a></li>
           <li><a href="#teacherQuizManager">🧠 <span>Quiz Manager</span></a></li>          <li><a href="#teacherActivitySection">🔔 <span>Activity</span></a></li>
           <li><a href="#teacherAnalyticsSection">📊 <span>Analytics</span></a></li>
@@ -128,9 +128,20 @@
       <div class="teacher-quick-actions">
         <button type="button" class="btn" onclick="document.getElementById('addStudentForm').scrollIntoView({behavior:'smooth',block:'center'})">＋ Add student</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherAttendanceManager').scrollIntoView({behavior:'smooth'})">Mark attendance</button>
-        <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('assignHwForm').scrollIntoView({behavior:'smooth',block:'center'})">Publish assignment</button>
+        <button type="button" class="btn teacher-secondary-action" id="openTeacherAssignmentsPage">＋ Create / Publish Assignment</button>
+        <button type="button" class="btn teacher-secondary-action" id="openAssignmentStatusFromDashboard">📊 Assignment Completion Status</button>
       </div>
 
+      <div class="card" style="margin-top:20px;">
+        <h3>📈 Assignment Dashboard</h3>
+        <p style="font-size:.82rem;color:var(--text-secondary);margin:4px 0 12px;">A live summary of published work and student completion.</p>
+        <div class="grid-cards" style="grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;">
+          <div class="stat-box"><small style="color:var(--text-secondary);">📚 Total Assignments</small><h2 id="assignmentStatTotal" style="margin-top:6px;">—</h2></div>
+          <div class="stat-box"><small style="color:var(--text-secondary);">✅ Completed</small><h2 id="assignmentStatCompleted" style="margin-top:6px;color:#10b981;">—</h2></div>
+          <div class="stat-box"><small style="color:var(--text-secondary);">⏳ Pending</small><h2 id="assignmentStatPending" style="margin-top:6px;color:#f59e0b;">—</h2></div>
+          <div class="stat-box"><small style="color:var(--text-secondary);">🎯 Completion Rate</small><h2 id="assignmentStatRate" style="margin-top:6px;">—</h2></div>
+        </div>
+      </div>
     </section>
 
     <section id="teacherQuizManager" class="card" style="margin:0 0 22px;scroll-margin-top:20px;">
@@ -324,10 +335,14 @@
 
     </section>
 
-    <section id="teacherAssignmentsSection" aria-labelledby="teacherAssignmentsHeading">
-    <!-- Teacher assignment publishing workspace -->
-    <div class="card" style="margin-bottom:20px;">
-      <h3 id="teacherAssignmentsHeading">📚 Assignments — Publish to Students</h3>
+    <section id="teacherAssignmentsSection" class="card" hidden style="margin:0 0 20px;" aria-labelledby="teacherAssignmentsHeading">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h2 id="teacherAssignmentsHeading">📚 Create & Publish Assignments</h2>
+          <p style="font-size:.85rem;color:var(--text-secondary);margin:5px 0 12px;">Create homework and publish it to all students or a selected class.</p>
+        </div>
+        <button type="button" class="btn teacher-secondary-action" id="backFromTeacherAssignments">← Back to dashboard</button>
+      </div>
       <form id="assignHwForm" class="portal-form">
         <input type="text" id="hwTitle" class="input-field" placeholder="Homework Title" required>
         <input type="text" id="hwSubject" class="input-field" placeholder="Subject (e.g. Mathematics)" required>
@@ -339,24 +354,6 @@
         <button type="submit" class="btn">🚀 Publish Assignment</button>
         <p style="font-size:.8rem;color:var(--text-secondary);margin:0;">Choose all students or a class. Published assignments appear in the students' Classroom and parent portal.</p>
       </form>
-    </div>
-
-    <div class="card" style="margin-top:20px;">
-      <h3>📈 Assignment Dashboard</h3>
-      <p style="font-size:.82rem;color:var(--text-secondary);margin:4px 0 12px;">A live summary of published work and student completion.</p>
-      <div class="grid-cards" style="grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;">
-        <div class="stat-box"><small style="color:var(--text-secondary);">📚 Total Assignments</small><h2 id="assignmentStatTotal" style="margin-top:6px;">—</h2></div>
-        <div class="stat-box"><small style="color:var(--text-secondary);">✅ Completed</small><h2 id="assignmentStatCompleted" style="margin-top:6px;color:#10b981;">—</h2></div>
-        <div class="stat-box"><small style="color:var(--text-secondary);">⏳ Pending</small><h2 id="assignmentStatPending" style="margin-top:6px;color:#f59e0b;">—</h2></div>
-        <div class="stat-box"><small style="color:var(--text-secondary);">🎯 Completion Rate</small><h2 id="assignmentStatRate" style="margin-top:6px;">—</h2></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:20px;">
-      <h3>📊 Assignment Completion Status</h3>
-      <p style="font-size:.85rem;color:var(--text-secondary);margin:5px 0 14px;">Open the full completion report on its own page to review student progress without crowding the dashboard.</p>
-      <button type="button" class="btn" id="openAssignmentStatusPage">View Assignment Status →</button>
-    </div>
     </section>
 
     <section id="teacherAssignmentStatusPage" class="card" hidden style="margin:0 0 20px;" aria-labelledby="teacherAssignmentStatusHeading">
@@ -969,31 +966,43 @@
     const assignmentStatusPage = document.getElementById('teacherAssignmentStatusPage');
     let assignmentStatusHiddenSections = [];
 
-    function openAssignmentStatusPage() {
-      if (!assignmentStatusPage.hidden) {
-        loadAssignmentOverview();
+    let activeTeacherSubpage = null;
+
+    function openTeacherSubpage(page) {
+      const target = page === 'assignments' ? document.getElementById('teacherAssignmentsSection') : assignmentStatusPage;
+      if (activeTeacherSubpage === page) {
+        if (page === 'status') loadAssignmentOverview();
         return;
       }
-      assignmentStatusHiddenSections = [...teacherMain.children].filter(node => node !== document.getElementById('teacherTop') && node !== assignmentStatusPage && !node.hidden);
-      assignmentStatusHiddenSections.forEach(node => { node.hidden = true; });
-      assignmentStatusPage.hidden = false;
-      assignmentStatusPage.scrollIntoView({behavior:'smooth',block:'start'});
-      loadAssignmentOverview();
+      if (!activeTeacherSubpage) {
+        assignmentStatusHiddenSections = [...teacherMain.children].filter(node => node !== document.getElementById('teacherTop') && node !== target && !node.hidden);
+        assignmentStatusHiddenSections.forEach(node => { node.hidden = true; });
+      } else {
+        document.getElementById('teacherAssignmentsSection').hidden = true;
+        assignmentStatusPage.hidden = true;
+      }
+      target.hidden = false;
+      activeTeacherSubpage = page;
+      target.scrollIntoView({behavior:'smooth',block:'start'});
+      if (page === 'status') loadAssignmentOverview();
     }
 
-    function closeAssignmentStatusPage() {
+    function closeTeacherSubpage() {
+      document.getElementById('teacherAssignmentsSection').hidden = true;
       assignmentStatusPage.hidden = true;
       assignmentStatusHiddenSections.forEach(node => { node.hidden = false; });
       assignmentStatusHiddenSections = [];
-      document.getElementById('teacherAssignmentsSection').scrollIntoView({behavior:'smooth',block:'start'});
+      activeTeacherSubpage = null;
+      document.getElementById('teacherCommandCenter').scrollIntoView({behavior:'smooth',block:'start'});
     }
 
-    document.getElementById('openAssignmentStatusPage').addEventListener('click', openAssignmentStatusPage);
-    document.getElementById('teacherAssignmentStatusNav').addEventListener('click', event => {
-      event.preventDefault();
-      openAssignmentStatusPage();
-    });
-    document.getElementById('backFromAssignmentStatus').addEventListener('click', closeAssignmentStatusPage);
+    document.getElementById('openTeacherAssignmentsPage').addEventListener('click', () => openTeacherSubpage('assignments'));
+    document.getElementById('teacherAssignmentsNav').addEventListener('click', event => { event.preventDefault(); openTeacherSubpage('assignments'); });
+    document.getElementById('backFromTeacherAssignments').addEventListener('click', closeTeacherSubpage);
+    document.getElementById('openAssignmentStatusFromDashboard').addEventListener('click', () => openTeacherSubpage('status'));
+    document.getElementById('openAssignmentStatusPage')?.addEventListener('click', () => openTeacherSubpage('status'));
+    document.getElementById('teacherAssignmentStatusNav').addEventListener('click', event => { event.preventDefault(); openTeacherSubpage('status'); });
+    document.getElementById('backFromAssignmentStatus').addEventListener('click', closeTeacherSubpage);
     document.getElementById('refreshAssignmentStatus').addEventListener('click', loadAssignmentOverview);
 
 
