@@ -312,7 +312,7 @@ sidebar#aurawaySidebar { transition:transform .24s ease; }
 
 /* NEXORA student navigation — premium, always expanded, easy to scan */
 .NEXORA-student-portal sidebar#aurawaySidebar{background:var(--bg-secondary);border-right:1px solid var(--border-color)}
-.NEXORA-student-portal .logo-area{display:block;width:max-content;margin:0 8px 26px;color:var(--accent-primary);background:none;-webkit-text-fill-color:currentColor;font-size:1.55rem;font-weight:850;letter-spacing:.14em}
+.NEXORA-student-portal .logo-area{display:flex;align-items:center;gap:10px;width:max-content;margin:0 8px 26px;color:var(--accent-primary);background:none;-webkit-text-fill-color:currentColor;font-size:1.55rem;font-weight:850;letter-spacing:.14em}
 .NEXORA-student-portal .student-nav-tools{margin:0 0 20px}
 .NEXORA-student-portal .student-nav-search-label{display:block;margin:0 5px 8px;color:var(--text-secondary);font-size:.68rem;font-weight:750;letter-spacing:.13em;text-transform:uppercase}
 .NEXORA-student-portal .student-nav-search{width:100%;min-height:46px;padding:11px 14px;border-radius:12px;color:var(--text-primary);background:var(--bg-primary);border:1px solid var(--border-color)}
