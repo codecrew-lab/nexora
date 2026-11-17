@@ -1,38 +1,38 @@
-// PULSE student authentication.
+﻿// NEXORA student authentication.
 // Student identity is established by a Supabase Auth session, never by localStorage alone.
-const PULSE_STUDENT_EMAIL_SUFFIX = "@students.pulse.app";
+const NEXORA_STUDENT_EMAIL_SUFFIX = "@students.NEXORA.app";
 
-function pulseStudentEmail(code) {
-  return String(code || "").trim().toLowerCase() + PULSE_STUDENT_EMAIL_SUFFIX;
+function NEXORAStudentEmail(code) {
+  return String(code || "").trim().toLowerCase() + NEXORA_STUDENT_EMAIL_SUFFIX;
 }
 
-function pulseShowLogin(message = "") {
+function NEXORAShowLogin(message = "") {
   document.body.innerHTML = `
     <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg-primary,#0b0f19);color:var(--text-primary,#f9fafb);padding:20px;font-family:system-ui,sans-serif;">
       <section style="max-width:420px;width:100%;background:var(--bg-card,#1f2937);border:1px solid var(--border-color,#374151);border-radius:16px;padding:28px;">
-        <h1 style="text-align:center;margin:0 0 8px;">PULSE 🎓</h1>
+        <h1 style="text-align:center;margin:0 0 8px;">NEXORA 🎓</h1>
         <p style="color:var(--text-secondary,#9ca3af);text-align:center;margin:0 0 20px;">Sign in with the student code and password given by your teacher.</p>
-        <form id="pulseStudentLoginForm" style="display:grid;gap:12px;">
-          <label for="pulseStudentCode">Student code</label>
-          <input id="pulseStudentCode" autocomplete="username" autocapitalize="characters" required placeholder="e.g. CLASS8-1234" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff;font-size:1rem;">
-          <label for="pulseStudentPassword">Student password</label>
-          <input id="pulseStudentPassword" type="password" autocomplete="current-password" required placeholder="Enter your password" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff;font-size:1rem;">
-          <p id="pulseStudentAuthError" role="alert" style="color:#f87171;font-size:.9rem;margin:0;min-height:1.2em;">${message.replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</p>
-          <button id="pulseStudentLoginButton" type="submit" style="width:100%;padding:12px;border:0;border-radius:8px;background:#6366f1;color:white;font-weight:700;font-size:1rem;cursor:pointer;">Sign in securely</button>
+        <form id="NEXORAStudentLoginForm" style="display:grid;gap:12px;">
+          <label for="NEXORAStudentCode">Student code</label>
+          <input id="NEXORAStudentCode" autocomplete="username" autocapitalize="characters" required placeholder="e.g. CLASS8-1234" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff;font-size:1rem;">
+          <label for="NEXORAStudentPassword">Student password</label>
+          <input id="NEXORAStudentPassword" type="password" autocomplete="current-password" required placeholder="Enter your password" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff;font-size:1rem;">
+          <p id="NEXORAStudentAuthError" role="alert" style="color:#f87171;font-size:.9rem;margin:0;min-height:1.2em;">${message.replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</p>
+          <button id="NEXORAStudentLoginButton" type="submit" style="width:100%;padding:12px;border:0;border-radius:8px;background:#6366f1;color:white;font-weight:700;font-size:1rem;cursor:pointer;">Sign in securely</button>
         </form>
         <p style="font-size:.78rem;color:var(--text-secondary,#9ca3af);text-align:center;margin:14px 0 0;">Forgot your password? Ask your teacher to reset your student login.</p>
       </section>
     </main>`;
 
-  document.getElementById("pulseStudentLoginForm").addEventListener("submit", pulseStudentSignIn);
+  document.getElementById("NEXORAStudentLoginForm").addEventListener("submit", NEXORAStudentSignIn);
 }
 
-async function pulseStudentSignIn(event) {
+async function NEXORAStudentSignIn(event) {
   event.preventDefault();
-  const codeInput = document.getElementById("pulseStudentCode");
-  const passwordInput = document.getElementById("pulseStudentPassword");
-  const errorBox = document.getElementById("pulseStudentAuthError");
-  const button = document.getElementById("pulseStudentLoginButton");
+  const codeInput = document.getElementById("NEXORAStudentCode");
+  const passwordInput = document.getElementById("NEXORAStudentPassword");
+  const errorBox = document.getElementById("NEXORAStudentAuthError");
+  const button = document.getElementById("NEXORAStudentLoginButton");
   const code = codeInput.value.trim().toUpperCase();
   const password = passwordInput.value;
   if (!code || !password || !supabaseClient) {
@@ -44,7 +44,7 @@ async function pulseStudentSignIn(event) {
   button.textContent = "Signing in…";
   errorBox.textContent = "";
   const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email: pulseStudentEmail(code),
+    email: NEXORAStudentEmail(code),
     password
   });
 
@@ -70,18 +70,18 @@ async function pulseStudentSignIn(event) {
     return;
   }
 
-  if (typeof pulseResetSessionDeadline === "function") pulseResetSessionDeadline();
+  if (typeof NEXORAResetSessionDeadline === "function") NEXORAResetSessionDeadline();
   localStorage.setItem("auraway_student_code", profile.student_code);
   localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
   window.location.reload();
 }
 
-async function pulseInitializeStudentAuth() {
+async function NEXORAInitializeStudentAuth() {
   const currentPage = window.location.pathname.split("/").pop() || "index.html";
   if (["teacher.html", "parent.html", "portals.html"].includes(currentPage)) return;
 
   if (!supabaseClient) {
-    pulseShowLogin("The secure login service is unavailable. Please try again later.");
+    NEXORAShowLogin("The secure login service is unavailable. Please try again later.");
     return;
   }
 
@@ -90,7 +90,7 @@ async function pulseInitializeStudentAuth() {
   if (sessionError || !session) {
     localStorage.removeItem("auraway_student_code");
     localStorage.removeItem("auraway_student_profile");
-    pulseShowLogin();
+    NEXORAShowLogin();
     return;
   }
 
@@ -104,30 +104,32 @@ async function pulseInitializeStudentAuth() {
     await supabaseClient.auth.signOut();
     localStorage.removeItem("auraway_student_code");
     localStorage.removeItem("auraway_student_profile");
-    pulseShowLogin("This account is not linked to a student record. Ask your teacher for help.");
+    NEXORAShowLogin("This account is not linked to a student record. Ask your teacher for help.");
     return;
   }
 
   localStorage.setItem("auraway_student_code", profile.student_code);
   localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
+  window.NEXORA_CURRENT_STUDENT = profile;
   window.PULSE_CURRENT_STUDENT = profile;
-  pulseAddStudentAccountControls();
-  pulseInitSiblingLinkForm();
-  pulseLoadSiblingAccounts();
+  NEXORAAddStudentAccountControls();
+  NEXORAInitSiblingLinkForm();
+  NEXORALoadSiblingAccounts();
+  window.dispatchEvent(new CustomEvent("NEXORAStudentReady", { detail: { profile } }));
   window.dispatchEvent(new CustomEvent("pulseStudentReady", { detail: { profile } }));
 }
 
-function pulseAddStudentAccountControls() {
+function NEXORAAddStudentAccountControls() {
   const header = document.querySelector(".header-bar");
-  if (!header || document.getElementById("pulseStudentAccountControls")) return;
+  if (!header || document.getElementById("NEXORAStudentAccountControls")) return;
   const wrap = document.createElement("div");
-  wrap.id = "pulseStudentAccountControls";
+  wrap.id = "NEXORAStudentAccountControls";
   wrap.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
   const siblingsButton = document.createElement("button");
   siblingsButton.type = "button";
   siblingsButton.className = "btn";
   siblingsButton.textContent = "My Siblings";
-  siblingsButton.addEventListener("click", () => document.getElementById("pulseSiblingAccounts")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  siblingsButton.addEventListener("click", () => document.getElementById("NEXORASiblingAccounts")?.scrollIntoView({ behavior: "smooth", block: "center" }));
   const button = document.createElement("button");
   button.type = "button";
   button.className = "btn";
@@ -138,8 +140,8 @@ function pulseAddStudentAccountControls() {
 }
 
 
-async function pulseLoadSiblingAccounts() {
-  const section = document.getElementById("pulseSiblingAccounts");
+async function NEXORALoadSiblingAccounts() {
+  const section = document.getElementById("NEXORASiblingAccounts");
   if (!section || !supabaseClient) return;
   const list = section.querySelector("[data-sibling-list]");
   if (!list) return;
@@ -165,17 +167,17 @@ async function pulseLoadSiblingAccounts() {
     button.type = "button";
     button.className = "btn";
     button.textContent = "Switch account";
-    button.addEventListener("click", () => pulseOpenSiblingSwitch(sibling));
+    button.addEventListener("click", () => NEXORAOpenSiblingSwitch(sibling));
     card.append(info, button);
     list.append(card);
   });
 }
 
-async function pulseFinishSiblingAuthentication(code, password, targetId, requestId, panel) {
+async function NEXORAFinishSiblingAuthentication(code, password, targetId, requestId, panel) {
   const message = panel.querySelector("[data-switch-message]");
   const submit = panel.querySelector('button[type="submit"]');
   const { data: signedIn, error: signInError } = await supabaseClient.auth.signInWithPassword({
-    email: pulseStudentEmail(code),
+    email: NEXORAStudentEmail(code),
     password
   });
   if (signInError || !signedIn?.user) {
@@ -192,7 +194,7 @@ async function pulseFinishSiblingAuthentication(code, password, targetId, reques
       await supabaseClient.auth.signOut();
       localStorage.removeItem("auraway_student_code");
       localStorage.removeItem("auraway_student_profile");
-      pulseShowLogin("Sibling verification could not be completed. Please sign in again.");
+      NEXORAShowLogin("Sibling verification could not be completed. Please sign in again.");
       return;
     }
   }
@@ -205,17 +207,17 @@ async function pulseFinishSiblingAuthentication(code, password, targetId, reques
     await supabaseClient.auth.signOut();
     localStorage.removeItem("auraway_student_code");
     localStorage.removeItem("auraway_student_profile");
-    pulseShowLogin("The account could not be verified. Please sign in again.");
+    NEXORAShowLogin("The account could not be verified. Please sign in again.");
     return;
   }
-  if (typeof pulseResetSessionDeadline === "function") pulseResetSessionDeadline();
+  if (typeof NEXORAResetSessionDeadline === "function") NEXORAResetSessionDeadline();
   localStorage.setItem("auraway_student_code", profile.student_code);
   localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
   window.location.reload();
 }
 
-function pulseInitSiblingLinkForm() {
-  const section = document.getElementById("pulseSiblingAccounts");
+function NEXORAInitSiblingLinkForm() {
+  const section = document.getElementById("NEXORASiblingAccounts");
   const panel = section?.querySelector("[data-sibling-link-form]");
   if (!panel || panel.dataset.bound === "true") return;
   panel.dataset.bound = "true";
@@ -238,12 +240,12 @@ function pulseInitSiblingLinkForm() {
       submit.disabled = false;
       return;
     }
-    await pulseFinishSiblingAuthentication(code, password, null, requestId, panel);
+    await NEXORAFinishSiblingAuthentication(code, password, null, requestId, panel);
   });
 }
 
-function pulseOpenSiblingSwitch(sibling) {
-  const section = document.getElementById("pulseSiblingAccounts");
+function NEXORAOpenSiblingSwitch(sibling) {
+  const section = document.getElementById("NEXORASiblingAccounts");
   if (!section) return;
   let panel = section.querySelector("[data-sibling-switch]");
   if (!panel) {
@@ -267,7 +269,7 @@ function pulseOpenSiblingSwitch(sibling) {
         submit.disabled = false;
         return;
       }
-      await pulseFinishSiblingAuthentication(code, password, panel.dataset.targetStudentId, null, panel);
+      await NEXORAFinishSiblingAuthentication(code, password, panel.dataset.targetStudentId, null, panel);
     });
     panel.querySelector("[data-switch-cancel]").addEventListener("click", () => {
       panel.reset();
@@ -288,7 +290,7 @@ async function studentLogout() {
   if (supabaseClient) await supabaseClient.auth.signOut();
   localStorage.removeItem("auraway_student_code");
   localStorage.removeItem("auraway_student_profile");
-  pulseShowLogin("You have signed out.");
+  NEXORAShowLogin("You have signed out.");
 }
 
-document.addEventListener("DOMContentLoaded", pulseInitializeStudentAuth, { once: true });
+document.addEventListener("DOMContentLoaded", NEXORAInitializeStudentAuth, { once: true });

@@ -1,4 +1,4 @@
-// PWA Service Worker Registration & Install Button Handler
+﻿// PWA Service Worker Registration & Install Button Handler
 (function () {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -17,7 +17,7 @@
     btn.id = 'pwaInstallBtn';
     btn.className = 'btn pwa-install-btn';
     btn.type = 'button';
-    btn.setAttribute('aria-label', 'Install PULSE Application');
+    btn.setAttribute('aria-label', 'Install NEXORA Application');
     btn.innerHTML = '📲 Install App';
     btn.style.cssText = `
       background: linear-gradient(135deg, var(--accent-primary, #8b5cf6), var(--accent-blue, #0284c7));
@@ -40,7 +40,7 @@
 
     btn.addEventListener('click', async () => {
       if (!deferredPrompt) {
-        alert('To install PULSE on your device, tap your browser menu (⋮ or Share) and select "Add to Home Screen" or "Install App".');
+        alert('To install NEXORA on your device, tap your browser menu (⋮ or Share) and select "Add to Home Screen" or "Install App".');
         return;
       }
       deferredPrompt.prompt();
@@ -70,7 +70,7 @@
   });
 
   window.addEventListener('appinstalled', () => {
-    console.log('PULSE PWA installed successfully!');
+    console.log('NEXORA PWA installed successfully!');
     const btn = document.getElementById('pwaInstallBtn');
     if (btn) btn.style.display = 'none';
   });

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PULSE — Attendance Management</title>
+  <title>NEXORA — Attendance Management</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -57,7 +57,7 @@
   <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <!-- Navigation Sidebar -->
     <sidebar id="aurawaySidebar" aria-label="Main navigation">
-      <div class="logo-area">PULSE</div>
+      <div class="logo-area">NEXORA</div>
       <ul class="nav-links" id="aurawayNavLinks">
         <li><a href="index.html">📊 Dashboard</a></li>
         <li><a href="planner.html">📅 Study Planner</a></li>
@@ -187,7 +187,7 @@
     }
 
     async function loadTeacherAttendance() {
-      const code = window.PULSE_CURRENT_STUDENT?.student_code;
+      const code = window.NEXORA_CURRENT_STUDENT?.student_code;
       if (!code || !supabaseClient) {
         attHistoryList.textContent = 'Please sign in with your student code to view attendance.';
         renderAttendance([]);
@@ -204,8 +204,8 @@
       renderAttendance(data || []);
     }
 
-    if (window.PULSE_CURRENT_STUDENT) loadTeacherAttendance();
-    else window.addEventListener('pulseStudentReady', loadTeacherAttendance, { once: true });
+    if (window.NEXORA_CURRENT_STUDENT) loadTeacherAttendance();
+    else window.addEventListener('NEXORAStudentReady', loadTeacherAttendance, { once: true });
   </script>
   <script src="navigation.js" defer></script>
   <script src="back-navigation.js" defer></script>

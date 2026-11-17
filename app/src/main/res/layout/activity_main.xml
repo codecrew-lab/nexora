@@ -20,7 +20,7 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/ic_pulse_logo" />
+            android:src="@drawable/ic_nexora_logo" />
 
         <TextView
             android:id="@+id/tvHeaderTitle"

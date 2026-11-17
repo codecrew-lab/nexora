@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.pulse.school"
+    namespace = "com.nexora.school"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.pulse.school"
+        applicationId = "com.nexora.school"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -23,7 +23,7 @@ android {
         create("student") {
             dimension = "portal"
             applicationIdSuffix = ".student"
-            manifestPlaceholders["appName"] = "PULSE"
+            manifestPlaceholders["appName"] = "NEXORA"
             manifestPlaceholders["portalTitle"] = "Student Portal"
             buildConfigField("String", "PORTAL_TYPE", "\"STUDENT\"")
             buildConfigField("String", "DEFAULT_URL", "\"file:///android_asset/index.html\"")
@@ -32,7 +32,7 @@ android {
         create("parent") {
             dimension = "portal"
             applicationIdSuffix = ".parent"
-            manifestPlaceholders["appName"] = "PULSE-P"
+            manifestPlaceholders["appName"] = "NEXORA-P"
             manifestPlaceholders["portalTitle"] = "Parent Portal"
             buildConfigField("String", "PORTAL_TYPE", "\"PARENT\"")
             buildConfigField("String", "DEFAULT_URL", "\"file:///android_asset/parent.html\"")
@@ -41,7 +41,7 @@ android {
         create("teacher") {
             dimension = "portal"
             applicationIdSuffix = ".teacher"
-            manifestPlaceholders["appName"] = "PULSE-T"
+            manifestPlaceholders["appName"] = "NEXORA-T"
             manifestPlaceholders["portalTitle"] = "Teacher Portal"
             buildConfigField("String", "PORTAL_TYPE", "\"TEACHER\"")
             buildConfigField("String", "DEFAULT_URL", "\"file:///android_asset/teacher.html\"")

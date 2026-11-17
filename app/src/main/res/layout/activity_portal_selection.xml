@@ -20,7 +20,7 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="24dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/ic_pulse_logo" />
+            android:src="@drawable/ic_nexora_logo" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -52,7 +52,7 @@
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
-        <!-- Portal 1: Student Portal (PULSE) -->
+        <!-- Portal 1: Student Portal (NEXORA) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardStudentPortal"
             android:layout_width="match_parent"
@@ -82,7 +82,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="🎓 PULSE — Student Portal"
+                        android:text="🎓 NEXORA — Student Portal"
                         android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -93,7 +93,7 @@
                         android:background="@drawable/bg_portal_card"
                         android:paddingHorizontal="10dp"
                         android:paddingVertical="4dp"
-                        android:text="PULSE"
+                        android:text="NEXORA"
                         android:textColor="@color/accent_primary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -118,7 +118,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Portal 2: Parent Portal (PULSE-P) -->
+        <!-- Portal 2: Parent Portal (NEXORA-P) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardParentPortal"
             android:layout_width="match_parent"
@@ -148,7 +148,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="👨‍👩‍👧 PULSE-P — Parent Portal"
+                        android:text="👨‍👩‍👧 NEXORA-P — Parent Portal"
                         android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -159,7 +159,7 @@
                         android:background="@drawable/bg_portal_card"
                         android:paddingHorizontal="10dp"
                         android:paddingVertical="4dp"
-                        android:text="PULSE-P"
+                        android:text="NEXORA-P"
                         android:textColor="@color/accent_teal"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -184,7 +184,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Portal 3: Teacher Portal (PULSE-T) -->
+        <!-- Portal 3: Teacher Portal (NEXORA-T) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardTeacherPortal"
             android:layout_width="match_parent"
@@ -214,7 +214,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="👩‍🏫 PULSE-T — Teacher Portal"
+                        android:text="👩‍🏫 NEXORA-T — Teacher Portal"
                         android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -225,7 +225,7 @@
                         android:background="@drawable/bg_portal_card"
                         android:paddingHorizontal="10dp"
                         android:paddingVertical="4dp"
-                        android:text="PULSE-T"
+                        android:text="NEXORA-T"
                         android:textColor="@color/accent_cyan"
                         android:textSize="12sp"
                         android:textStyle="bold" />

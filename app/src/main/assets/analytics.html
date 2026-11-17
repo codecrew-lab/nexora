@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PULSE — My Analytics</title>
+  <title>NEXORA — My Analytics</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -24,7 +24,7 @@
     <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <sidebar id="aurawaySidebar" aria-label="Main navigation">
-      <div class="logo-area">PULSE</div>
+      <div class="logo-area">NEXORA</div>
       <ul class="nav-links" id="aurawayNavLinks">
         <li><a href="index.html">📊 Dashboard</a></li>
         <li><a href="planner.html">📅 Study Planner</a></li>
@@ -98,7 +98,7 @@
     let charts=[];
     function redraw(){charts.forEach(c=>drawBars(document.getElementById(c.id),c.labels,c.values,c.colors));}
     async function loadAnalytics(){
-      const profile=window.PULSE_CURRENT_STUDENT;
+      const profile=window.NEXORA_CURRENT_STUDENT;
       const code=profile?.student_code;
       if(!code||!profile||!supabaseClient)return;
       document.getElementById('analyticsStudentName').textContent=(profile?.student_name||'Student')+' · Your personal progress';
@@ -159,8 +159,8 @@
       redraw();
     }
     window.addEventListener('resize',redraw);
-    if(window.PULSE_CURRENT_STUDENT) loadAnalytics();
-    else window.addEventListener('pulseStudentReady',loadAnalytics,{once:true});
+    if(window.NEXORA_CURRENT_STUDENT) loadAnalytics();
+    else window.addEventListener('NEXORAStudentReady',loadAnalytics,{once:true});
   </script>
   <script src="navigation.js" defer></script>
   <script src="back-navigation.js" defer></script>

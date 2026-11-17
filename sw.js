@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pulse-pwa-v21';
+﻿const CACHE_NAME = 'NEXORA-Pwa-v21';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -92,7 +92,7 @@ self.addEventListener('fetch', event => {
           const offlinePage = await cache.match(new URL('./portals.html', scopeUrl).href);
           if (offlinePage) return offlinePage;
         }
-        return new Response('PULSE is offline. This page is not available in the offline cache.', {
+        return new Response('NEXORA is offline. This page is not available in the offline cache.', {
           status: 503,
           headers: { 'Content-Type': 'text/plain; charset=utf-8' }
         });

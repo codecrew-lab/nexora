@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101426">
-  <title>PULSE — Parent Portal</title>
+  <title>NEXORA — Parent Portal</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css?v=20261114-parent3">
   <script src="pwa-installer.js" defer></script>
@@ -37,7 +37,7 @@
 
   </style>
 </head>
-<body class="pulse-parent-portal">
+<body class="NEXORA-Parent-portal">
   <div class="standalone-wrap">
     <div class="header-bar" style="margin-bottom: 24px;">
       <div class="welcome-title" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
@@ -48,17 +48,17 @@
               <stop offset="50%" stop-color="#0d9488" />
               <stop offset="100%" stop-color="#10b981" />
             </linearGradient>
-            <linearGradient id="pulseGradP" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id="NEXORAGradP" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stop-color="#0284c7" />
               <stop offset="100%" stop-color="#2563eb" />
             </linearGradient>
           </defs>
           <path d="M 250 50 C 330 50, 410 80, 420 120 C 430 240, 370 360, 250 430 C 130 360, 70 240, 80 120 C 90 80, 170 50, 250 50 Z" fill="none" stroke="url(#shieldGradP)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M 50 240 L 170 240 L 195 200 L 220 280 L 245 140 L 270 300 L 295 220 L 320 240 L 450 240" fill="none" stroke="url(#pulseGradP)" stroke-width="14" stroke-linecap="round" />
+          <path d="M 50 240 L 170 240 L 195 200 L 220 280 L 245 140 L 270 300 L 295 220 L 320 240 L 450 240" fill="none" stroke="url(#NEXORAGradP)" stroke-width="14" stroke-linecap="round" />
           <polygon points="410,40 420,60 442,63 426,78 430,100 410,88 390,100 394,78 378,63 400,60" fill="#f59e0b" />
         </svg>
         <div>
-          <h1>PULSE-P — Parent Portal 👨‍👩‍👧</h1>
+          <h1>NEXORA-P — Parent Portal 👨‍👩‍👧</h1>
           <p>Track your child's studying, attendance, teacher requests, and improvement areas.</p>
         </div>
       </div>
@@ -133,7 +133,7 @@
       localStorage.setItem('auraway_theme', next);
     });
 
-    const PARENT_SESSION_KEY = 'pulse_parent_remembered_student_v1';
+    const PARENT_SESSION_KEY = 'NEXORA_parent_remembered_student_v1';
     const PARENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
     function rememberParentStudent(code) {

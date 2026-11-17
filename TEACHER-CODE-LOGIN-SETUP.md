@@ -1,4 +1,4 @@
-# PULSE teacher code-only sign-in setup
+﻿# NEXORA teacher code-only sign-in setup
 
 This change replaces teacher sign-up with a sign-in form containing only:
 - Login Code

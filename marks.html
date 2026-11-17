@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="student-auth.js"></script>
-  <title>PULSE — Academic Marks Manager</title>
+  <title>NEXORA — Academic Marks Manager</title>
   <link rel="stylesheet" href="style.css">
   <style>
     .marks-form {
@@ -58,7 +58,7 @@
   <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button><div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <!-- Navigation Sidebar -->
     <sidebar id="aurawaySidebar" aria-label="Main navigation">
-      <div class="logo-area">PULSE</div>
+      <div class="logo-area">NEXORA</div>
       <ul class="nav-links" id="aurawayNavLinks">
 <li><a href="index.html">📊 Dashboard</a></li><li><a href="planner.html">📅 Study Planner</a></li><li><a href="timetable.html">🗓️ Timetable</a></li><li><a href="exam.html">🎯 Exams</a></li><li><a href="marks.html">📈 Marks Manager</a></li><li><a href="attendance.html">📋 Attendance</a></li><li><a href="flashcards.html">🗂️ Flashcards</a></li><li><a href="classroom.html">🎓 Classroom</a></li><li><a href="focus.html">⏱️ Focus Centre</a></li><li><a href="notes.html">📝 Digital Notes</a></li><li><a href="wellness.html">🌱 Wellness</a></li><li><a href="progress.html">🏆 Progress</a></li><li><a href="search.html">🔍 Search</a></li><li><a href="settings.html">⚙️ Settings</a></li></ul>
       <button class="btn" id="themeToggle" style="margin-top: auto;">Theme</button>
@@ -196,8 +196,8 @@
       });
     }
 
-    window.addEventListener('pulseStudentReady', event => loadOfficialSchoolMarks(event.detail?.profile));
-    if (window.PULSE_CURRENT_STUDENT) loadOfficialSchoolMarks(window.PULSE_CURRENT_STUDENT);
+    window.addEventListener('NEXORAStudentReady', event => loadOfficialSchoolMarks(event.detail?.profile));
+    if (window.NEXORA_CURRENT_STUDENT) loadOfficialSchoolMarks(window.NEXORA_CURRENT_STUDENT);
 
     // Marks State
     let marks = JSON.parse(localStorage.getItem('auraway_marks')) || [];

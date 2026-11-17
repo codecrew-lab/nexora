@@ -1,9 +1,9 @@
-package com.pulse.school
+package com.nexora.school
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.pulse.school.databinding.ActivityPortalSelectionBinding
+import com.nexora.school.databinding.ActivityPortalSelectionBinding
 
 class PortalSelectionActivity : AppCompatActivity() {
 
@@ -14,7 +14,7 @@ class PortalSelectionActivity : AppCompatActivity() {
         binding = ActivityPortalSelectionBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Portal 1: Student Portal (PULSE)
+        // Portal 1: Student Portal (NEXORA)
         binding.btnOpenStudent.setOnClickListener {
             launchPortal(StudentPortalActivity::class.java)
         }
@@ -22,7 +22,7 @@ class PortalSelectionActivity : AppCompatActivity() {
             launchPortal(StudentPortalActivity::class.java)
         }
 
-        // Portal 2: Parent Portal (PULSE-P)
+        // Portal 2: Parent Portal (NEXORA-P)
         binding.btnOpenParent.setOnClickListener {
             launchPortal(ParentPortalActivity::class.java)
         }
@@ -30,7 +30,7 @@ class PortalSelectionActivity : AppCompatActivity() {
             launchPortal(ParentPortalActivity::class.java)
         }
 
-        // Portal 3: Teacher Portal (PULSE-T)
+        // Portal 3: Teacher Portal (NEXORA-T)
         binding.btnOpenTeacher.setOnClickListener {
             launchPortal(TeacherPortalActivity::class.java)
         }

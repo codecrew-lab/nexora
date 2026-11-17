@@ -1,4 +1,4 @@
-package com.pulse.school
+package com.nexora.school
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -13,12 +13,12 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import com.pulse.school.databinding.ActivityMainBinding
+import com.nexora.school.databinding.ActivityMainBinding
 
 open class MainActivity : AppCompatActivity() {
 
     protected lateinit var binding: ActivityMainBinding
-    protected open var portalName: String = "PULSE"
+    protected open var portalName: String = "NEXORA"
     protected open var targetUrl: String = "file:///android_asset/index.html"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,9 +80,6 @@ open class MainActivity : AppCompatActivity() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             settings.safeBrowsingEnabled = true
         }
-
-        // No JavaScript-to-native bridge is needed by the bundled portal pages.
-        // Removing it prevents web content from invoking Android app methods.
 
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {

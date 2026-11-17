@@ -1,4 +1,4 @@
-/* PULSE shared navigation drawer */
+﻿/* NEXORA shared navigation drawer */
 (() => {
   const sidebar = document.getElementById('aurawaySidebar');
   const toggle = document.getElementById('menuToggle');

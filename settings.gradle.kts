@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PULSE"
+rootProject.name = "NEXORA"
 include(":app")

@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101426">
-  <title>PULSE — Daily Quiz Centre</title>
+  <title>NEXORA — Daily Quiz Centre</title>
   <link rel="stylesheet" href="style.css?v=20261116-quiz-navfix">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
@@ -35,7 +35,7 @@
     <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <sidebar id="aurawaySidebar" aria-label="Student navigation">
-      <div class="logo-area">PULSE</div>
+      <div class="logo-area">NEXORA</div>
       <nav aria-label="Student portal navigation">
         <div class="student-nav-section">
           <h2>OVERVIEW</h2>
@@ -58,7 +58,7 @@
         <button class="btn" id="themeToggle" type="button">Theme</button>
       </header>
       <section class="quiz-hero">
-        <span style="font-size:.7rem;font-weight:800;letter-spacing:.14em;color:var(--accent-primary)">PULSE LEARNING</span>
+        <span style="font-size:.7rem;font-weight:800;letter-spacing:.14em;color:var(--accent-primary)">NEXORA LEARNING</span>
         <h2 style="margin:7px 0">10 questions. One subject. Every day.</h2>
         <p style="margin:0;color:var(--text-secondary)">Available for Standards 5–12. Complete each subject's daily quiz once; your score is saved securely.</p>
       </section>
@@ -195,8 +195,8 @@
     document.getElementById('backToSubjects').addEventListener('click', () => {
       panel.hidden = true; document.getElementById('quizSubjectsSection').hidden = false;
     });
-    window.addEventListener('pulseStudentReady', event => showEligibility(event.detail?.profile || window.PULSE_CURRENT_STUDENT));
-    if (window.PULSE_CURRENT_STUDENT) showEligibility(window.PULSE_CURRENT_STUDENT);
+    window.addEventListener('NEXORAStudentReady', event => showEligibility(event.detail?.profile || window.NEXORA_CURRENT_STUDENT));
+    if (window.NEXORA_CURRENT_STUDENT) showEligibility(window.NEXORA_CURRENT_STUDENT);
     // The shared drawer closes immediately after a navigation choice on mobile.
     document.querySelectorAll('#aurawaySidebar a[href]').forEach(link => {
       link.addEventListener('click', () => {

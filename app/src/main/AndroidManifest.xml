@@ -11,7 +11,7 @@
         android:label="${appName}"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PULSE">
+        android:theme="@style/Theme.NEXORA">
 
         <!-- Portal Selector / Main Launcher -->
         <activity
@@ -27,17 +27,17 @@
         <activity
             android:name=".StudentPortalActivity"
             android:exported="false"
-            android:label="PULSE" />
+            android:label="NEXORA" />
 
         <activity
             android:name=".ParentPortalActivity"
             android:exported="false"
-            android:label="PULSE-P" />
+            android:label="NEXORA-P" />
 
         <activity
             android:name=".TeacherPortalActivity"
             android:exported="false"
-            android:label="PULSE-T" />
+            android:label="NEXORA-T" />
 
         <activity
             android:name=".MainActivity"

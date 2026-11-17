@@ -1,4 +1,4 @@
-package com.pulse.school
+package com.nexora.school
 
 import android.content.Context
 import android.content.Intent
@@ -20,9 +20,9 @@ class WebAppInterface(private val context: Context, private val currentPortal: S
     @JavascriptInterface
     fun openPortal(portal: String) {
         val intent = when (portal.uppercase()) {
-            "STUDENT", "PULSE" -> Intent(context, StudentPortalActivity::class.java)
-            "PARENT", "PULSE-P" -> Intent(context, ParentPortalActivity::class.java)
-            "TEACHER", "PULSE-T" -> Intent(context, TeacherPortalActivity::class.java)
+            "STUDENT", "NEXORA" -> Intent(context, StudentPortalActivity::class.java)
+            "PARENT", "NEXORA-P" -> Intent(context, ParentPortalActivity::class.java)
+            "TEACHER", "NEXORA-T" -> Intent(context, TeacherPortalActivity::class.java)
             else -> Intent(context, PortalSelectionActivity::class.java)
         }
         intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK

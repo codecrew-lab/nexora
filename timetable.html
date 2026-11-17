@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101426">
-  <title>PULSE — Smart Timetable</title>
+  <title>NEXORA — Smart Timetable</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css?v=20261114-timetable1">
   <script src="pwa-installer.js" defer></script>
@@ -56,12 +56,12 @@
     @media(prefers-reduced-motion:reduce){.tt-slot,.tt-day{transition:none!important}}
   </style>
 </head>
-<body class="pulse-student-portal">
+<body class="NEXORA-student-portal">
   <div class="app-container">
     <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <sidebar id="aurawaySidebar" aria-label="Main navigation">
-      <div class="logo-area">PULSE</div>
+      <div class="logo-area">NEXORA</div>
       <ul class="nav-links" id="aurawayNavLinks">
         <li><a href="index.html">📊 Dashboard</a></li><li><a href="planner.html">📅 Study Planner</a></li><li><a href="timetable.html">🗓️ Timetable</a></li><li><a href="exam.html">🎯 Exams</a></li><li><a href="marks.html">📈 Marks Manager</a></li><li><a href="attendance.html">📋 Attendance</a></li><li><a href="flashcards.html">🗂️ Flashcards</a></li><li><a href="classroom.html">🎓 Classroom</a></li><li><a href="focus.html">⏱️ Focus Centre</a></li><li><a href="notes.html">📝 Digital Notes</a></li><li><a href="wellness.html">🌱 Wellness</a></li><li><a href="progress.html">🏆 Progress</a></li><li><a href="search.html">🔍 Search</a></li><li><a href="settings.html">⚙️ Settings</a></li>
       </ul>
@@ -154,7 +154,7 @@
       if(error){document.getElementById('weekSummary').textContent='Could not load the shared timetable. Please refresh.';console.error('Timetable load failed',error);return}
       render(data||[]);
     }
-    window.addEventListener('pulseStudentReady',loadSharedTimetable,{once:true});
+    window.addEventListener('NEXORAStudentReady',loadSharedTimetable,{once:true});
   </script>
   <script src="navigation.js" defer></script>
   <script src="back-navigation.js" defer></script>

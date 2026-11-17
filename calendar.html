@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101426">
-  <title>PULSE — Academic Calendar</title>
+  <title>NEXORA — Academic Calendar</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css?v=20261116-academic-calendar">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -65,7 +65,7 @@
     <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <sidebar id="aurawaySidebar" aria-label="Main navigation" style="visibility:hidden;">
-      <div class="logo-area"><span class="logo-text">PULSE</span></div>
+      <div class="logo-area"><span class="logo-text">NEXORA</span></div>
       <ul class="nav-links">
         <li><a href="index.html">📊 Dashboard</a></li>
         <li><a href="planner.html">📅 Study Planner</a></li>
@@ -162,7 +162,7 @@
       sidebar.style.visibility='visible';
       if(isTeacher){
         sidebar.setAttribute('aria-label','Teacher navigation');
-        logo.textContent='PULSE-T';
+        logo.textContent='NEXORA-T';
         list.innerHTML=`
           <li><a href="teacher.html#teacherCommandCenter">🏠 Overview</a></li>
           <li><a href="teacher.html#teacherStudentsSection">👥 Students</a></li>
@@ -175,7 +175,7 @@
           <li><a href="teacher.html#teacherAnalyticsSection">📊 Analytics</a></li>`;
       } else {
         sidebar.setAttribute('aria-label','Student navigation');
-        logo.textContent='PULSE';
+        logo.textContent='NEXORA';
         list.innerHTML=`
           <li><a href="index.html">📊 Dashboard</a></li>
           <li><a href="planner.html">📅 Study Planner</a></li>

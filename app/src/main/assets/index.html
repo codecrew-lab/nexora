@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -7,54 +7,54 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101426">
-  <title>PULSE — Student Productivity Dashboard</title>
+  <title>NEXORA — Student Productivity Dashboard</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css?v=20261114-nav2">
   <script src="pwa-installer.js" defer></script>
   <script src="portal-switcher.js" defer></script>
   <style>
-    .pulse-school-snapshot{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 24px}
-    .pulse-school-snapshot .snapshot-item{min-width:0;padding:14px 16px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary)}
-    .pulse-school-snapshot .snapshot-label{display:block;color:var(--text-secondary);font-size:.78rem;margin-bottom:6px}
-    .pulse-school-snapshot .snapshot-value{font-size:1.15rem;font-weight:750;overflow-wrap:anywhere}
-    .pulse-school-snapshot .snapshot-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-    .pulse-school-snapshot .snapshot-link{color:var(--accent-primary);font-weight:650;text-decoration:none}
-    .pulse-school-snapshot .snapshot-link:hover{text-decoration:underline}
+    .NEXORA-school-snapshot{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 24px}
+    .NEXORA-school-snapshot .snapshot-item{min-width:0;padding:14px 16px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary)}
+    .NEXORA-school-snapshot .snapshot-label{display:block;color:var(--text-secondary);font-size:.78rem;margin-bottom:6px}
+    .NEXORA-school-snapshot .snapshot-value{font-size:1.15rem;font-weight:750;overflow-wrap:anywhere}
+    .NEXORA-school-snapshot .snapshot-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .NEXORA-school-snapshot .snapshot-link{color:var(--accent-primary);font-weight:650;text-decoration:none}
+    .NEXORA-school-snapshot .snapshot-link:hover{text-decoration:underline}
       /* High-visibility exam countdown */
-    .pulse-exam-focus{position:relative;overflow:hidden;padding:clamp(20px,4vw,32px);border:1px solid rgba(99,102,241,.38);background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.22),transparent 48%),linear-gradient(125deg,rgba(30,41,75,.98),rgba(15,23,42,.98));box-shadow:0 16px 42px rgba(15,23,42,.18)}
-    [data-theme="light"] .pulse-exam-focus{background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.14),transparent 48%),linear-gradient(125deg,#eef2ff,#fff);border-color:rgba(79,70,229,.25)}
-    .pulse-exam-focus-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .pulse-exam-eyebrow{font-size:.7rem;font-weight:850;letter-spacing:.18em;color:#a5b4fc}
-    .pulse-exam-focus h2{font-size:clamp(1.2rem,3vw,1.65rem);font-weight:850;margin:5px 0 0}
-    .pulse-exam-manage{font-size:.8rem;font-weight:750;color:#a5b4fc;text-decoration:none;padding:9px 12px;border:1px solid rgba(165,180,252,.32);border-radius:10px}
-    .pulse-exam-name{font-size:clamp(1.15rem,3vw,1.55rem);font-weight:850;margin:20px 0 12px;letter-spacing:-.02em}
-    .pulse-exam-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:620px}
-    .pulse-exam-count-unit{min-width:0;padding:clamp(12px,3vw,20px) 8px;text-align:center;border:1px solid rgba(165,180,252,.24);border-radius:16px;background:rgba(99,102,241,.12)}
-    .pulse-exam-count-unit strong{display:block;font-size:clamp(2.25rem,9vw,4.5rem);line-height:1.02;font-weight:950;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:#fff}
-    [data-theme="light"] .pulse-exam-count-unit strong{color:#1e1b4b}
-    .pulse-exam-count-unit span{display:block;margin-top:8px;font-size:.68rem;font-weight:850;letter-spacing:.16em;color:#c7d2fe}
-    [data-theme="light"] .pulse-exam-count-unit span{color:#4338ca}
-    .pulse-exam-date{font-size:.88rem;font-weight:650;color:#cbd5e1;margin:14px 0 0}
-    [data-theme="light"] .pulse-exam-date{color:#475569}
-    @media(max-width:420px){.pulse-exam-focus{padding:17px}.pulse-exam-count-grid{gap:6px}.pulse-exam-count-unit{border-radius:12px}.pulse-exam-count-unit strong{font-size:clamp(2rem,12vw,3.1rem)}.pulse-exam-count-unit span{font-size:.58rem}}
+    .NEXORA-exam-focus{position:relative;overflow:hidden;padding:clamp(20px,4vw,32px);border:1px solid rgba(99,102,241,.38);background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.22),transparent 48%),linear-gradient(125deg,rgba(30,41,75,.98),rgba(15,23,42,.98));box-shadow:0 16px 42px rgba(15,23,42,.18)}
+    [data-theme="light"] .NEXORA-exam-focus{background:radial-gradient(ellipse at 88% 8%,rgba(99,102,241,.14),transparent 48%),linear-gradient(125deg,#eef2ff,#fff);border-color:rgba(79,70,229,.25)}
+    .NEXORA-exam-focus-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .NEXORA-exam-eyebrow{font-size:.7rem;font-weight:850;letter-spacing:.18em;color:#a5b4fc}
+    .NEXORA-exam-focus h2{font-size:clamp(1.2rem,3vw,1.65rem);font-weight:850;margin:5px 0 0}
+    .NEXORA-exam-manage{font-size:.8rem;font-weight:750;color:#a5b4fc;text-decoration:none;padding:9px 12px;border:1px solid rgba(165,180,252,.32);border-radius:10px}
+    .NEXORA-exam-name{font-size:clamp(1.15rem,3vw,1.55rem);font-weight:850;margin:20px 0 12px;letter-spacing:-.02em}
+    .NEXORA-exam-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:620px}
+    .NEXORA-exam-count-unit{min-width:0;padding:clamp(12px,3vw,20px) 8px;text-align:center;border:1px solid rgba(165,180,252,.24);border-radius:16px;background:rgba(99,102,241,.12)}
+    .NEXORA-exam-count-unit strong{display:block;font-size:clamp(2.25rem,9vw,4.5rem);line-height:1.02;font-weight:950;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:#fff}
+    [data-theme="light"] .NEXORA-exam-count-unit strong{color:#1e1b4b}
+    .NEXORA-exam-count-unit span{display:block;margin-top:8px;font-size:.68rem;font-weight:850;letter-spacing:.16em;color:#c7d2fe}
+    [data-theme="light"] .NEXORA-exam-count-unit span{color:#4338ca}
+    .NEXORA-exam-date{font-size:.88rem;font-weight:650;color:#cbd5e1;margin:14px 0 0}
+    [data-theme="light"] .NEXORA-exam-date{color:#475569}
+    @media(max-width:420px){.NEXORA-exam-focus{padding:17px}.NEXORA-exam-count-grid{gap:6px}.NEXORA-exam-count-unit{border-radius:12px}.NEXORA-exam-count-unit strong{font-size:clamp(2rem,12vw,3.1rem)}.NEXORA-exam-count-unit span{font-size:.58rem}}
 
 </style>
 </head>
-<body class="pulse-student-portal">
+<body class="NEXORA-student-portal">
   <div class="app-container">
   <button type="button" class="menu-toggle" id="menuToggle" aria-label="Open navigation menu" aria-controls="aurawaySidebar" aria-expanded="false"><span></span><span></span><span></span></button>
   <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <!-- Navigation Sidebar -->
     <sidebar id="aurawaySidebar" aria-label="Main navigation">
       <div class="logo-area">
-        <svg class="pulse-app-logo" viewBox="0 0 500 500" width="32" height="32" aria-hidden="true">
+        <svg class="NEXORA-app-logo" viewBox="0 0 500 500" width="32" height="32" aria-hidden="true">
           <defs>
             <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stop-color="#0284c7" />
               <stop offset="50%" stop-color="#0d9488" />
               <stop offset="100%" stop-color="#10b981" />
             </linearGradient>
-            <linearGradient id="pulseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id="NEXORAGrad" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stop-color="#0284c7" />
               <stop offset="100%" stop-color="#2563eb" />
             </linearGradient>
@@ -71,7 +71,7 @@
             <path d="M 210 170 C 230 160, 250 160, 270 170 L 270 220 C 250 210, 230 210, 210 220 Z" fill="rgba(13, 148, 136, 0.2)" />
             <line x1="210" y1="170" x2="210" y2="220" stroke="#0284c7" />
           </g>
-          <path d="M 50 240 L 170 240 L 195 200 L 220 280 L 245 140 L 270 300 L 295 220 L 320 240 L 450 240" fill="none" stroke="url(#pulseGrad)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M 50 240 L 170 240 L 195 200 L 220 280 L 245 140 L 270 300 L 295 220 L 320 240 L 450 240" fill="none" stroke="url(#NEXORAGrad)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
           <circle cx="310" cy="270" r="14" fill="#0284c7" />
           <path d="M 285 340 C 285 305, 335 305, 335 340 Z" fill="#0284c7" />
           <path d="M 285 315 L 265 290 M 335 315 L 355 290" stroke="#0284c7" stroke-width="8" stroke-linecap="round" />
@@ -82,7 +82,7 @@
           <path d="M 270 210 L 380 100 L 410 70" fill="none" stroke="url(#starGrad)" stroke-width="14" stroke-linecap="round" />
           <polygon points="410,40 420,60 442,63 426,78 430,100 410,88 390,100 394,78 378,63 400,60" fill="#f59e0b" />
         </svg>
-        <span class="logo-text">PULSE</span>
+        <span class="logo-text">NEXORA</span>
       </div>
       <div class="student-nav-tools">
         <label class="student-nav-search-label" for="studentNavSearch">Find a feature</label>
@@ -124,21 +124,21 @@
         <button class="btn student-theme-toggle" id="themeToggle" type="button" aria-label="Switch between dark and light theme">☀ Switch theme</button>
       </div>
 
-      <section class="card pulse-exam-focus" id="examCountdownSection" aria-live="polite" style="margin-bottom:24px;display:block!important;visibility:visible!important;">
-        <div class="pulse-exam-focus-top">
-          <div><span class="pulse-exam-eyebrow">YOUR NEXT EXAM</span><h2>Exam Countdown 🎯</h2></div>
-          <a class="pulse-exam-manage" href="exam.html">Manage exams ↗</a>
+      <section class="card NEXORA-exam-focus" id="examCountdownSection" aria-live="polite" style="margin-bottom:24px;display:block!important;visibility:visible!important;">
+        <div class="NEXORA-exam-focus-top">
+          <div><span class="NEXORA-exam-eyebrow">YOUR NEXT EXAM</span><h2>Exam Countdown 🎯</h2></div>
+          <a class="NEXORA-exam-manage" href="exam.html">Manage exams ↗</a>
         </div>
-        <p id="dashExamName" class="pulse-exam-name">No upcoming exams scheduled</p>
-        <div class="pulse-exam-count-grid" aria-label="Time remaining until next exam">
-          <div class="pulse-exam-count-unit"><strong id="dashExamDays">--</strong><span>DAYS</span></div>
-          <div class="pulse-exam-count-unit"><strong id="dashExamHours">--</strong><span>HOURS</span></div>
-          <div class="pulse-exam-count-unit"><strong id="dashExamMinutes">--</strong><span>MINUTES</span></div>
+        <p id="dashExamName" class="NEXORA-exam-name">No upcoming exams scheduled</p>
+        <div class="NEXORA-exam-count-grid" aria-label="Time remaining until next exam">
+          <div class="NEXORA-exam-count-unit"><strong id="dashExamDays">--</strong><span>DAYS</span></div>
+          <div class="NEXORA-exam-count-unit"><strong id="dashExamHours">--</strong><span>HOURS</span></div>
+          <div class="NEXORA-exam-count-unit"><strong id="dashExamMinutes">--</strong><span>MINUTES</span></div>
         </div>
-        <p id="dashExamCountdown" class="pulse-exam-date">Add an exam in the Exams section to see your countdown.</p>
+        <p id="dashExamCountdown" class="NEXORA-exam-date">Add an exam in the Exams section to see your countdown.</p>
       </section>
 
-      <section class="card pulse-school-snapshot" aria-labelledby="schoolSnapshotTitle">
+      <section class="card NEXORA-school-snapshot" aria-labelledby="schoolSnapshotTitle">
         <div style="grid-column:1/-1;">
           <div class="snapshot-heading">
             <div>
@@ -147,7 +147,7 @@
             </div>
             <a class="snapshot-link" href="analytics.html">View academic analytics →</a>
           </div>
-          <div class="pulse-school-snapshot" style="margin:0;">
+          <div class="NEXORA-school-snapshot" style="margin:0;">
             <div class="snapshot-item"><span class="snapshot-label">Class</span><span class="snapshot-value" id="snapshotClass">—</span></div>
             <div class="snapshot-item"><span class="snapshot-label">Recorded attendance</span><span class="snapshot-value" id="snapshotAttendance">—</span></div>
             <div class="snapshot-item"><span class="snapshot-label">Study hours on profile</span><span class="snapshot-value" id="snapshotStudyHours">—</span></div>
@@ -155,10 +155,10 @@
         </div>
       </section>
 
-      <section class="card" id="pulseSiblingAccounts" aria-labelledby="pulseSiblingHeading" style="margin:16px 0;">
+      <section class="card" id="NEXORASiblingAccounts" aria-labelledby="NEXORASiblingHeading" style="margin:16px 0;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div><h2 id="pulseSiblingHeading" style="font-size:1.05rem;margin:0;">👨‍👩‍👧 My Siblings</h2><p style="color:var(--text-secondary);font-size:.82rem;margin:4px 0 0;">Link a sibling using their student code and password. Your school data stays separate.</p></div>
-          <button type="button" class="btn" onclick="pulseLoadSiblingAccounts()">Refresh</button>
+          <div><h2 id="NEXORASiblingHeading" style="font-size:1.05rem;margin:0;">👨‍👩‍👧 My Siblings</h2><p style="color:var(--text-secondary);font-size:.82rem;margin:4px 0 0;">Link a sibling using their student code and password. Your school data stays separate.</p></div>
+          <button type="button" class="btn" onclick="NEXORALoadSiblingAccounts()">Refresh</button>
         </div>
         <form data-sibling-link-form style="display:grid;gap:10px;margin-top:14px;padding:14px;border:1px solid var(--border-color);border-radius:12px;">
           <strong>＋ Add a sibling</strong>
@@ -438,13 +438,13 @@
     }
 
     document.getElementById('refreshCloudAssignments').addEventListener('click', () => {
-      if (window.PULSE_CURRENT_STUDENT) loadCloudAssignmentProgress(window.PULSE_CURRENT_STUDENT);
+      if (window.NEXORA_CURRENT_STUDENT) loadCloudAssignmentProgress(window.NEXORA_CURRENT_STUDENT);
     });
-    if (window.PULSE_CURRENT_STUDENT) {
-      loadCloudAssignmentProgress(window.PULSE_CURRENT_STUDENT);
+    if (window.NEXORA_CURRENT_STUDENT) {
+      loadCloudAssignmentProgress(window.NEXORA_CURRENT_STUDENT);
     } else {
-      window.addEventListener('pulseStudentReady', event => {
-        loadCloudAssignmentProgress(event.detail?.profile || window.PULSE_CURRENT_STUDENT);
+      window.addEventListener('NEXORAStudentReady', event => {
+        loadCloudAssignmentProgress(event.detail?.profile || window.NEXORA_CURRENT_STUDENT);
       }, { once: true });
     }
 

@@ -1,22 +1,22 @@
-// Supabase browser client configuration.
+﻿// Supabase browser client configuration.
 // The publishable key is safe to expose in the browser; protect data with RLS policies.
 const SUPABASE_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_sbS10vHYIrxhHsqnQNoWgA_WzREJj_-';
 
 // Enforce a fixed seven-day maximum from the successful sign-in.
 // Token refreshes must not extend this deadline. Signing out removes the session immediately.
-const PULSE_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const NEXORA_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // Keep each portal's session separate so opening the Teacher portal cannot
 // sign out the Student portal (and vice versa) in the same browser.
-const PULSE_PORTAL_ROLE = (() => {
+const NEXORA_PORTAL_ROLE = (() => {
   const page = window.location.pathname.split('/').pop().toLowerCase();
   if (page === 'teacher.html' || (page === 'calendar.html' && new URLSearchParams(window.location.search).get('portal') === 'teacher')) return 'teacher';
   if (page === 'parent.html') return 'parent';
   return 'student';
 })();
-const PULSE_AUTH_STORAGE_KEY = 'sb-iazlemocpuhzwtrkyfgw-' + PULSE_PORTAL_ROLE + '-auth-token';
+const NEXORA_AUTH_STORAGE_KEY = 'sb-iazlemocpuhzwtrkyfgw-' + NEXORA_PORTAL_ROLE + '-auth-token';
 
-const pulseSessionStorage = {
+const NEXORASessionStorage = {
   getItem(key) {
     try {
       const stored = window.localStorage.getItem(key);
@@ -35,7 +35,7 @@ const pulseSessionStorage = {
 
       window.localStorage.setItem(key, JSON.stringify({
         value: stored,
-        expiresAt: Date.now() + PULSE_SESSION_TTL_MS
+        expiresAt: Date.now() + NEXORA_SESSION_TTL_MS
       }));
       return stored;
     } catch (_) {
@@ -47,7 +47,7 @@ const pulseSessionStorage = {
       // Supabase writes the session again whenever it rotates tokens. Preserve the
       // original deadline instead of silently turning seven days into a sliding window.
       const previous = window.localStorage.getItem(key);
-      let expiresAt = Date.now() + PULSE_SESSION_TTL_MS;
+      let expiresAt = Date.now() + NEXORA_SESSION_TTL_MS;
       if (previous) {
         try {
           const parsed = JSON.parse(previous);
@@ -68,15 +68,15 @@ const pulseSessionStorage = {
   }
 };
 
-function pulseResetSessionDeadline() {
+function NEXORAResetSessionDeadline() {
   try {
-    const raw = window.localStorage.getItem(PULSE_AUTH_STORAGE_KEY);
+    const raw = window.localStorage.getItem(NEXORA_AUTH_STORAGE_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed.value === "string") {
-      window.localStorage.setItem(PULSE_AUTH_STORAGE_KEY, JSON.stringify({
+      window.localStorage.setItem(NEXORA_AUTH_STORAGE_KEY, JSON.stringify({
         value: parsed.value,
-        expiresAt: Date.now() + PULSE_SESSION_TTL_MS
+        expiresAt: Date.now() + NEXORA_SESSION_TTL_MS
       }));
     }
   } catch (_) {}
@@ -85,8 +85,8 @@ function pulseResetSessionDeadline() {
 const supabaseClient = (window.supabase?.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
-        storage: pulseSessionStorage,
-        storageKey: PULSE_AUTH_STORAGE_KEY,
+        storage: NEXORASessionStorage,
+        storageKey: NEXORA_AUTH_STORAGE_KEY,
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
