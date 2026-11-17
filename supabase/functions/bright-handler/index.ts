@@ -1,9 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://zaminmohammed78-bit.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
 };
 
 const json = (body: Record<string, unknown>, status = 200) =>
@@ -11,6 +12,32 @@ const json = (body: Record<string, unknown>, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+// Per-isolate throttling is defense-in-depth only. Configure an edge/WAF rate
+// limit as well before production use because serverless instances can scale.
+const failedAttempts = new Map<string, { count: number; resetAt: number }>();
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILURES = 5;
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const current = failedAttempts.get(key);
+  if (!current || current.resetAt <= now) {
+    failedAttempts.set(key, { count: 0, resetAt: now + WINDOW_MS });
+    return false;
+  }
+  return current.count >= MAX_FAILURES;
+}
+
+function recordFailure(key: string): void {
+  const now = Date.now();
+  const current = failedAttempts.get(key);
+  if (!current || current.resetAt <= now) {
+    failedAttempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
+  } else {
+    current.count += 1;
+  }
+}
 
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -20,8 +47,24 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    const origin = req.headers.get("origin");
+    if (origin && origin !== corsHeaders["Access-Control-Allow-Origin"]) {
+      return new Response("Origin not allowed", { status: 403 });
+    }
+    return new Response("ok", { headers: corsHeaders });
+  }
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
+
+  const origin = req.headers.get("origin");
+  if (origin && origin !== corsHeaders["Access-Control-Allow-Origin"]) {
+    return json({ error: "Origin not allowed." }, 403);
+  }
+
+  const ip = req.headers.get("cf-connecting-ip") || "unknown";
+  if (isRateLimited(ip)) {
+    return json({ error: "Too many attempts. Please wait 15 minutes and try again." }, 429);
+  }
 
   try {
     const loginCode = Deno.env.get("TEACHER_LOGIN_CODE");
@@ -43,16 +86,19 @@ Deno.serve(async (req: Request) => {
       !constantTimeEqual(suppliedLoginCode, loginCode) ||
       !constantTimeEqual(suppliedAccessCode, accessCode)
     ) {
+      recordFailure(ip);
       return json({ error: "The login details are incorrect." }, 401);
     }
+
+    failedAttempts.delete(ip);
 
     const email = "teacher@auraway.app";
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Sign in only to the existing teacher account. Never create users or change
-    // account metadata/passwords here; this preserves the existing account.
+    // Only authenticate the existing teacher account. Never create users or
+    // change account metadata/passwords, and never access student records.
     const { data: listed, error: listError } = await admin.auth.admin.listUsers({
       page: 1,
       perPage: 1000,
