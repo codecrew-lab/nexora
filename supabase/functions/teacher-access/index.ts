@@ -12,65 +12,56 @@ const json = (body: Record<string, unknown>, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
   try {
+    const loginCode = Deno.env.get("TEACHER_LOGIN_CODE");
     const accessCode = Deno.env.get("TEACHER_ACCESS_CODE");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!accessCode || !supabaseUrl || !serviceRoleKey) {
-      console.error("Teacher access function is missing required server secrets.");
-      return json({ error: "Teacher login is not configured yet." }, 503);
+
+    if (!loginCode || !accessCode || !supabaseUrl || !serviceRoleKey) {
+      console.error("Teacher sign-in is missing required server configuration.");
+      return json({ error: "Teacher sign-in is not configured yet." }, 503);
     }
 
-    const body = await req.json();
-    const action = body?.action;
-    const firstName = typeof body?.first_name === "string" ? body.first_name.trim() : "";
-    const suppliedCode = typeof body?.access_code === "string" ? body.access_code : "";
+    const body = await req.json().catch(() => ({}));
+    const suppliedLoginCode = typeof body?.login_code === "string" ? body.login_code.trim() : "";
+    const suppliedAccessCode = typeof body?.access_code === "string" ? body.access_code : "";
 
-    if (!["signup", "signin"].includes(action) || !firstName || firstName.length > 60 || !suppliedCode) {
-      return json({ error: "Enter a valid first name and access code." }, 400);
-    }
-    if (suppliedCode !== accessCode) {
-      return json({ error: "The teacher access code is incorrect." }, 401);
+    if (
+      body?.action !== "signin" ||
+      !constantTimeEqual(suppliedLoginCode, loginCode) ||
+      !constantTimeEqual(suppliedAccessCode, accessCode)
+    ) {
+      return json({ error: "The login details are incorrect." }, 401);
     }
 
-    // This project uses one shared teacher identity because the school has one shared access code.
-    // The code is checked only on the server; it is never sent back to the browser.
     const email = "teacher@auraway.app";
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Sign in only to the existing teacher account. Never create users or change
+    // account metadata/passwords here; this preserves the existing account.
     const { data: listed, error: listError } = await admin.auth.admin.listUsers({
       page: 1,
       perPage: 1000,
     });
     if (listError) throw listError;
 
-    let teacher = listed.users.find((user) => user.email?.toLowerCase() === email);
-    if (!teacher && action === "signin") {
-      return json({ error: "No teacher account exists yet. Choose Sign up first." }, 404);
-    }
-
+    const teacher = listed.users.find((user) => user.email?.toLowerCase() === email);
     if (!teacher) {
-      const randomPassword = crypto.randomUUID() + crypto.randomUUID() + "Aa1!";
-      const { data, error } = await admin.auth.admin.createUser({
-        email,
-        password: randomPassword,
-        email_confirm: true,
-        user_metadata: { display_name: firstName },
-      });
-      if (error) throw error;
-      teacher = data.user;
-    } else {
-      const { data, error } = await admin.auth.admin.updateUserById(teacher.id, {
-        user_metadata: { ...teacher.user_metadata, display_name: firstName },
-      });
-      if (error) throw error;
-      teacher = data.user;
+      return json({ error: "The existing teacher account was not found. Contact the school administrator." }, 404);
     }
 
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
@@ -83,7 +74,7 @@ Deno.serve(async (req: Request) => {
     if (!tokenHash) throw new Error("Supabase did not return a one-time sign-in token.");
     return json({ token_hash: tokenHash });
   } catch (error) {
-    console.error("Teacher access error:", error);
-    return json({ error: "Teacher access could not be completed. Please try again." }, 500);
+    console.error("Teacher sign-in error:", error);
+    return json({ error: "Teacher sign-in could not be completed. Please try again." }, 500);
   }
 });
