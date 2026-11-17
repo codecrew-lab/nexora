@@ -182,11 +182,14 @@
   <script>
     const html = document.documentElement;
     html.setAttribute('data-theme', localStorage.getItem('auraway_theme') || 'dark');
-    document.getElementById('themeToggle').addEventListener('click', () => {
-      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', next);
-      localStorage.setItem('auraway_theme', next);
-    });
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('auraway_theme', next);
+      });
+    }
   </script>
   <script src="back-navigation.js" defer></script>
 </body>
