@@ -20,9 +20,9 @@ Never put these values in website JavaScript or commit them to GitHub.
 
 ## Deploy the Edge Function
 
-Deploy the function in `supabase/functions/teacher-access` to the linked Supabase project. The teacher page calls the function route:
+Deploy the function in `supabase/functions/bright-handler` to the linked Supabase project. The teacher page calls the function route:
 
-`/functions/v1/teacher-access`
+`/functions/v1/bright-handler`
 
 After deployment, test sign-in using both codes. The function only signs in to the existing teacher account; it does not create users, change account metadata, change passwords, or modify student data.
 
