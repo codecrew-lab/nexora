@@ -970,6 +970,10 @@
     let assignmentStatusHiddenSections = [];
 
     function openAssignmentStatusPage() {
+      if (!assignmentStatusPage.hidden) {
+        loadAssignmentOverview();
+        return;
+      }
       assignmentStatusHiddenSections = [...teacherMain.children].filter(node => node !== document.getElementById('teacherTop') && node !== assignmentStatusPage && !node.hidden);
       assignmentStatusHiddenSections.forEach(node => { node.hidden = true; });
       assignmentStatusPage.hidden = false;
