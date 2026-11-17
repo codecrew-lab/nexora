@@ -97,6 +97,7 @@
           <li><a href="#teacherAttendanceManager">📋 <span>Attendance</span></a></li>
           <li><a href="#teacherMarksSection">📝 <span>Marks</span></a></li>
           <li><a href="#teacherAssignmentsSection">📚 <span>Assignments</span></a></li>
+          <li><a href="#teacherAssignmentStatusPage" id="teacherAssignmentStatusNav">📊 <span>Assignment Completion Status</span></a></li>
           <li><a href="#teacherQuizManager">🧠 <span>Quiz Manager</span></a></li>          <li><a href="#teacherActivitySection">🔔 <span>Activity</span></a></li>
           <li><a href="#teacherAnalyticsSection">📊 <span>Analytics</span></a></li>
         </ul>
@@ -352,14 +353,26 @@
     </div>
 
     <div class="card" style="margin-top:20px;">
+      <h3>📊 Assignment Completion Status</h3>
+      <p style="font-size:.85rem;color:var(--text-secondary);margin:5px 0 14px;">Open the full completion report on its own page to review student progress without crowding the dashboard.</p>
+      <button type="button" class="btn" id="openAssignmentStatusPage">View Assignment Status →</button>
+    </div>
+    </section>
+
+    <section id="teacherAssignmentStatusPage" class="card" hidden style="margin:0 0 20px;" aria-labelledby="teacherAssignmentStatusHeading">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <h3>📊 Assignment Completion Status</h3>
-        <button type="button" class="btn" id="refreshAssignmentStatus" style="padding:6px 12px;">Refresh Status</button>
+        <div>
+          <h2 id="teacherAssignmentStatusHeading">📊 Assignment Completion Status</h2>
+          <p style="font-size:.85rem;color:var(--text-secondary);margin:5px 0 12px;">Review completion for each published assignment and its assigned students.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn teacher-secondary-action" id="backFromAssignmentStatus">← Back to dashboard</button>
+          <button type="button" class="btn" id="refreshAssignmentStatus" style="padding:6px 12px;">Refresh Status</button>
+        </div>
       </div>
       <div id="teacherAssignmentOverview" style="margin-top:12px;">
         <p style="color:var(--text-secondary);">Loading assignment status...</p>
       </div>
-    </div>
     </section>
     </main>
   </div>
@@ -952,6 +965,31 @@
       });
     }
 
+    const teacherMain = document.getElementById('teacherPortalContent');
+    const assignmentStatusPage = document.getElementById('teacherAssignmentStatusPage');
+    let assignmentStatusHiddenSections = [];
+
+    function openAssignmentStatusPage() {
+      assignmentStatusHiddenSections = [...teacherMain.children].filter(node => node !== document.getElementById('teacherTop') && node !== assignmentStatusPage && !node.hidden);
+      assignmentStatusHiddenSections.forEach(node => { node.hidden = true; });
+      assignmentStatusPage.hidden = false;
+      assignmentStatusPage.scrollIntoView({behavior:'smooth',block:'start'});
+      loadAssignmentOverview();
+    }
+
+    function closeAssignmentStatusPage() {
+      assignmentStatusPage.hidden = true;
+      assignmentStatusHiddenSections.forEach(node => { node.hidden = false; });
+      assignmentStatusHiddenSections = [];
+      document.getElementById('teacherAssignmentsSection').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    document.getElementById('openAssignmentStatusPage').addEventListener('click', openAssignmentStatusPage);
+    document.getElementById('teacherAssignmentStatusNav').addEventListener('click', event => {
+      event.preventDefault();
+      openAssignmentStatusPage();
+    });
+    document.getElementById('backFromAssignmentStatus').addEventListener('click', closeAssignmentStatusPage);
     document.getElementById('refreshAssignmentStatus').addEventListener('click', loadAssignmentOverview);
 
 
