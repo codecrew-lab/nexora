@@ -20,7 +20,7 @@ Never put these values in website JavaScript or commit them to GitHub.
 
 ## Deploy the Edge Function
 
-Deploy the function in `supabase/functions/bright-handler` to the linked Supabase project. The teacher page calls the function route:
+Deploy the function in `supabase/functions/bright-handler` to the linked Supabase project with JWT verification disabled (`verify_jwt = false`), because the function validates both codes itself. Keep the function's server-side code checks enabled. The teacher page calls the function route:
 
 `/functions/v1/bright-handler`
 
