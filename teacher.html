@@ -68,15 +68,16 @@
         </svg>
         <h1 style="margin:0;">PULSE-T — Teacher Sign In 👩‍🏫</h1>
       </div>
-      <p style="color:var(--text-secondary);margin:8px 0 16px;">Enter your teacher access code and name to continue.</p>
+      <p style="color:var(--text-secondary);margin:8px 0 16px;">Use your own school-approved email account. New teacher accounts need school-admin approval.</p>
       <div class="portal-form" id="teacherLoginForm">
-        <input id="teacherDisplayName" class="input-field" type="text" placeholder="Your teacher name" autocomplete="name" required>
-        <input id="teacherAccessCode" class="input-field" type="password" placeholder="Teacher access code" autocomplete="current-password" required>
+        <input id="teacherDisplayName" class="input-field" type="text" placeholder="Your full name" autocomplete="name" minlength="2" maxlength="100" required>
+        <input id="teacherEmail" class="input-field" type="email" placeholder="Your email address" autocomplete="username" required>
+        <input id="teacherPassword" class="input-field" type="password" placeholder="Password (at least 10 characters)" autocomplete="current-password" minlength="10" maxlength="72" required>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <button class="btn" id="teacherLoginButton" type="button">Sign in</button>
-          <button class="btn" id="teacherSignupButton" type="button" style="background:#0f766e;">Sign up</button>
+          <button class="btn" id="teacherSignupButton" type="button" style="background:#0f766e;">Create account</button>
         </div>
-        <p id="teacherLoginError" role="alert" style="color:#ef4444;"></p>
+        <p id="teacherLoginError" role="alert" aria-live="polite" style="color:#ef4444;"></p>
       </div>
     </div>
   </section>
@@ -118,6 +119,15 @@
     </div>
 
 
+
+    <section id="teacherAdminApprovalPanel" class="card" style="display:none;margin:0 0 22px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div><h2 style="margin:0;">School Admin — Teacher Approvals</h2><p style="color:var(--text-secondary);margin:5px 0 0;">Review requests before granting access to student records.</p></div>
+        <button type="button" class="btn" id="refreshTeacherRequests">Refresh requests</button>
+      </div>
+      <p id="teacherAdminMessage" role="status" aria-live="polite" style="margin:10px 0;color:var(--text-secondary);"></p>
+      <div id="teacherAccessRequests" style="margin-top:12px;"><p style="color:var(--text-secondary);">Loading approval requests…</p></div>
+    </section>
 
     <section class="teacher-command-center" id="teacherCommandCenter" aria-label="Teacher command center">
       <div class="teacher-command-heading">
@@ -385,70 +395,197 @@
     </form>
   </div>
   <script>
-    const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/bright-handler';
+    const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/hyper-function';
+
+    async function callTeacherAccess(action, extra = {}) {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const session = sessionData?.session;
+      if (!session?.access_token) throw new Error('Please sign in again.');
+      const response = await fetch(TEACHER_AUTH_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + session.access_token
+        },
+        body: JSON.stringify({ action, ...extra })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Teacher access request failed.');
+      return result;
+    }
+
+    function showTeacherLoginMessage(message, isError = false) {
+      const box = document.getElementById('teacherLoginError');
+      box.textContent = message;
+      box.style.color = isError ? '#ef4444' : 'var(--text-secondary)';
+    }
 
     async function showTeacherPortal(session) {
-      const email = session?.user?.email?.toLowerCase();
       const appRole = session?.user?.app_metadata?.role;
-      const isAuthorisedTeacher = email === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(appRole);
-      if (!isAuthorisedTeacher) {
-        await supabaseClient.auth.signOut();
-        document.getElementById('teacherLoginError').textContent = 'This account is not authorized for the teacher portal.';
-        return;
-      }
+      if (!['teacher', 'school_admin'].includes(appRole)) return false;
       const name = session.user.user_metadata?.display_name || 'Teacher';
       document.getElementById('teacherLoginPanel').style.display = 'none';
       document.getElementById('teacherAppContainer').style.display = 'flex';
       document.getElementById('teacherPortalContent').style.display = 'block';
       document.getElementById('teacherPortalHeading').textContent = 'PULSE — ' + name;
+      const adminPanel = document.getElementById('teacherAdminApprovalPanel');
+      if (adminPanel) adminPanel.style.display = appRole === 'school_admin' ? 'block' : 'none';
       await loadStudentsRoster();
       await loadTeacherMarks();
       await loadTeacherAnalytics();
       loadStudentActivity();
       loadAssignmentOverview();
       await loadTeacherQuizManager();
+      if (appRole === 'school_admin') await loadTeacherAccessRequests();
+      return true;
     }
 
-    async function requestTeacherAccess(action, event) {
+    async function submitTeacherSignup(event) {
       event.preventDefault();
       const name = document.getElementById('teacherDisplayName').value.trim();
-      const code = document.getElementById('teacherAccessCode').value;
+      const email = document.getElementById('teacherEmail').value.trim().toLowerCase();
+      const password = document.getElementById('teacherPassword').value;
       const button = event.currentTarget;
-      const errorBox = document.getElementById('teacherLoginError');
-      if (!supabaseClient || !name || !code) {
-        errorBox.textContent = 'Enter your first name and teacher access code.';
+      if (!supabaseClient || name.length < 2 || !email || password.length < 10) {
+        showTeacherLoginMessage('Enter your name, a valid email, and a password of at least 10 characters.', true);
         return;
       }
       button.disabled = true;
-      button.textContent = action === 'signup' ? 'Creating account…' : 'Signing in…';
-      errorBox.textContent = '';
+      button.textContent = 'Creating account…';
+      showTeacherLoginMessage('');
       try {
-        const response = await fetch(TEACHER_AUTH_FUNCTION_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
-          body: JSON.stringify({ action, first_name: name, access_code: code })
+        const { data, error } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: { data: { display_name: name } }
         });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.token_hash) {
-          throw new Error(result.error || 'Teacher access could not be verified.');
+        if (error) throw error;
+        document.getElementById('teacherPassword').value = '';
+        if (!data.session) {
+          showTeacherLoginMessage('Account created. Check your email to verify the address, then sign in here to request school approval.');
+          return;
         }
-        const { data, error } = await supabaseClient.auth.verifyOtp({
-          token_hash: result.token_hash,
-          type: 'magiclink'
-        });
-        if (error || !data.session) throw new Error('Could not create a secure teacher session. Please try again.');
-        document.getElementById('teacherAccessCode').value = '';
-        await showTeacherPortal(data.session);
+        const request = await callTeacherAccess('request', { full_name: name });
+        showTeacherLoginMessage(request.message || 'Your request is waiting for school-admin approval.');
       } catch (error) {
-        errorBox.textContent = error.message || 'Teacher sign-in failed. Please try again.';
+        showTeacherLoginMessage(error.message || 'Could not create your account.', true);
       } finally {
         button.disabled = false;
-        button.textContent = action === 'signup' ? 'Create teacher account' : 'Sign in';
+        button.textContent = 'Create account';
       }
     }
 
-    document.getElementById('teacherSignupButton').addEventListener('click', (event) => requestTeacherAccess('signup', event));
-    document.getElementById('teacherLoginButton').addEventListener('click', (event) => requestTeacherAccess('signin', event));
+    async function submitTeacherLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('teacherEmail').value.trim().toLowerCase();
+      const password = document.getElementById('teacherPassword').value;
+      const button = event.currentTarget;
+      if (!supabaseClient || !email || !password) {
+        showTeacherLoginMessage('Enter your email address and password.', true);
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Signing in…';
+      showTeacherLoginMessage('');
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error || !data.session) throw error || new Error('Sign-in failed.');
+        document.getElementById('teacherPassword').value = '';
+        const role = data.session.user.app_metadata?.role;
+        if (role === 'teacher' || role === 'school_admin') {
+          await showTeacherPortal(data.session);
+          return;
+        }
+        if (role === 'student') {
+          await supabaseClient.auth.signOut();
+          throw new Error('This is a student account. Please use a separate teacher email account.');
+        }
+        const name = document.getElementById('teacherDisplayName').value.trim()
+          || data.session.user.user_metadata?.display_name || '';
+        const request = await callTeacherAccess('request', { full_name: name });
+        showTeacherLoginMessage(request.message || 'Your account is waiting for school-admin approval.');
+      } catch (error) {
+        showTeacherLoginMessage(error.message || 'Teacher sign-in failed.', true);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Sign in';
+      }
+    }
+
+    document.getElementById('teacherSignupButton').addEventListener('click', submitTeacherSignup);
+    document.getElementById('teacherLoginButton').addEventListener('click', submitTeacherLogin);
+
+    async function loadTeacherAccessRequests() {
+      const container = document.getElementById('teacherAccessRequests');
+      const message = document.getElementById('teacherAdminMessage');
+      if (!container) return;
+      container.textContent = 'Loading approval requests…';
+      try {
+        const result = await callTeacherAccess('list');
+        container.replaceChildren();
+        const requests = result.requests || [];
+        if (!requests.length) {
+          container.textContent = 'There are no pending teacher requests.';
+          return;
+        }
+        requests.forEach(request => {
+          const row = document.createElement('div');
+          row.className = 'student-row';
+          const details = document.createElement('div');
+          const title = document.createElement('strong');
+          title.textContent = request.full_name;
+          const email = document.createElement('div');
+          email.textContent = request.email;
+          email.style.cssText = 'font-size:.84rem;color:var(--text-secondary);margin-top:4px;';
+          const date = document.createElement('small');
+          date.textContent = 'Requested: ' + new Date(request.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+          date.style.cssText = 'display:block;color:var(--text-secondary);margin-top:4px;';
+          details.append(title, email, date);
+          const actions = document.createElement('div');
+          actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+          const approve = document.createElement('button');
+          approve.type = 'button';
+          approve.className = 'btn';
+          approve.textContent = 'Approve';
+          approve.dataset.requestId = request.id;
+          approve.dataset.action = 'approve';
+          const reject = document.createElement('button');
+          reject.type = 'button';
+          reject.className = 'btn';
+          reject.style.background = '#b91c1c';
+          reject.textContent = 'Reject';
+          reject.dataset.requestId = request.id;
+          reject.dataset.action = 'reject';
+          actions.append(approve, reject);
+          row.append(details, actions);
+          container.appendChild(row);
+        });
+      } catch (error) {
+        container.textContent = error.message || 'Could not load approval requests.';
+        if (message) message.textContent = 'Check that this account has the school_admin role.';
+      }
+    }
+
+    document.getElementById('refreshTeacherRequests')?.addEventListener('click', loadTeacherAccessRequests);
+    document.getElementById('teacherAccessRequests')?.addEventListener('click', async event => {
+      const button = event.target.closest('button[data-action][data-request-id]');
+      if (!button) return;
+      const action = button.dataset.action;
+      if (!['approve', 'reject'].includes(action)) return;
+      const requestId = button.dataset.requestId;
+      if (action === 'reject' && !confirm('Reject this teacher access request?')) return;
+      button.disabled = true;
+      try {
+        const result = await callTeacherAccess(action, { request_id: requestId });
+        document.getElementById('teacherAdminMessage').textContent = result.message || 'Request updated.';
+        await loadTeacherAccessRequests();
+      } catch (error) {
+        document.getElementById('teacherAdminMessage').textContent = error.message || 'Could not update this request.';
+      } finally {
+        button.disabled = false;
+      }
+    });
 
     document.getElementById('teacherSignOut').addEventListener('click', async () => {
       await supabaseClient.auth.signOut();
@@ -457,12 +594,19 @@
 
     (async function initializeTeacherAuth() {
       if (!supabaseClient) {
-        document.getElementById('teacherLoginError').textContent = 'Supabase is not configured.';
+        showTeacherLoginMessage('Supabase is not configured.', true);
         return;
       }
       const { data } = await supabaseClient.auth.getSession();
-      if (data.session?.user?.email?.toLowerCase() === 'teacher@auraway.app') await showTeacherPortal(data.session);
-      else if (data.session) await supabaseClient.auth.signOut();
+      if (!data.session) return;
+      const role = data.session.user.app_metadata?.role;
+      if (role === 'teacher' || role === 'school_admin') {
+        await showTeacherPortal(data.session);
+      } else if (role === 'student') {
+        await supabaseClient.auth.signOut();
+      } else {
+        showTeacherLoginMessage('This account is not yet approved for the teacher portal. Sign in after the school administrator approves your request.');
+      }
     })();
 
     const html = document.documentElement;
