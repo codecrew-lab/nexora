@@ -44,6 +44,12 @@ Deno.serve(async (req: Request) => {
       if (role === "teacher" || isSchoolAdmin) {
         return json({ status: "approved", message: "This account is already approved." });
       }
+      if (role === "student") {
+        return json({ error: "Student accounts cannot request teacher access. Use a separate teacher email account." }, 403);
+      }
+      if (!user.email_confirmed_at) {
+        return json({ error: "Verify your email address before requesting teacher access." }, 403);
+      }
       const fullName = typeof body?.full_name === "string" ? body.full_name.trim() : "";
       if (fullName.length < 2 || fullName.length > 100 || !user.email) {
         return json({ error: "Enter your name and verify your email address." }, 400);
