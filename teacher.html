@@ -687,6 +687,22 @@
       if ([...select.options].some(option => option.value === currentValue)) select.value = currentValue;
     }
 
+    function attendanceTimeDetails(record) {
+      if (!record?.created_at) return '';
+      const instant = new Date(record.created_at);
+      if (Number.isNaN(instant.getTime())) return '';
+      const displayTime = instant.toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
+      });
+      if (record.marked_by == null && record.status === 'Present') {
+        const clock = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).format(instant);
+        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
+      }
+      return 'Recorded: ' + displayTime;
+    }
+
     async function loadAttendanceRoster() {
       const className = document.getElementById('attendanceClassSelect').value;
       const date = document.getElementById('attendanceDateInput').value;
@@ -707,7 +723,7 @@
       }
       const codes = students.map(student => student.student_code);
       const { data: records, error } = await supabaseClient.from('attendance_records')
-        .select('id,student_code,status').eq('attendance_date', date).in('student_code', codes);
+        .select('id,student_code,status,created_at,marked_by').eq('attendance_date', date).in('student_code', codes);
       if (error) {
         roster.textContent = 'Could not load attendance. ' + error.message;
         saveButton.style.display = 'none';
@@ -726,6 +742,10 @@
         code.textContent = student.student_code;
         code.style.color = 'var(--text-secondary)';
         info.append(name, document.createElement('br'), code);
+        const timing = document.createElement('small');
+        timing.style.cssText = 'display:block;margin-top:5px;color:var(--text-secondary);font-size:.78rem;';
+        timing.textContent = attendanceTimeDetails(record);
+        if (timing.textContent) info.appendChild(timing);
         const actions = document.createElement('div');
         actions.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
         const select = document.createElement('select');
