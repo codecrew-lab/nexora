@@ -25,17 +25,17 @@
 
         <activity
             android:name=".StudentPortalActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="PULSE" />
 
         <activity
             android:name=".ParentPortalActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="PULSE-P" />
 
         <activity
             android:name=".TeacherPortalActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="PULSE-T" />
 
         <activity
