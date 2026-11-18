@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'NEXORA-Pwa-v22';
+﻿const CACHE_NAME = 'NEXORA-Pwa-v23';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
