@@ -298,7 +298,7 @@
   <script src="back-navigation.js" defer>
     async function loadNexoraTeacherAssignedExams() {
       const list = document.getElementById('teacherAssignedExamsList');
-      if (!list || !window.supabaseClient) return;
+      if (!list || typeof supabaseClient === 'undefined' || !supabaseClient) return;
       const student = window.NEXORA_CURRENT_STUDENT;
       if (!student?.id) { list.textContent = 'Sign in to your Student Portal to view exams assigned to you.'; return; }
       list.textContent = 'Loading your exams…';
