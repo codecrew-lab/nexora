@@ -65,7 +65,7 @@
         <h2 id="pStudentName">Student Name</h2>
         <p id="pStudentClass">Class &bull; Code</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-          <button class="btn" type="button" id="parentSwitchStudent">Switch student / sibling</button>
+          <button class="btn" type="button" id="parentSwitchStudent" onclick="showParentCodeEntry()" aria-controls="parentAccessCard">Switch child / sibling</button>
           <button class="btn" type="button" id="parentSignOut" style="background:transparent;border:1px solid var(--border-color);color:var(--text-primary);">Sign out</button>
         </div>
         <p id="parentSessionExpiry" style="font-size:.78rem;color:var(--text-secondary);margin:9px 0 0;">Access remembered for up to 7 days on this device.</p>
@@ -140,6 +140,10 @@
     function showParentCodeEntry() {
       document.getElementById('parentAccessCard').style.display = 'block';
       document.getElementById('parentReportCard').style.display = 'none';
+      const accessHeading = document.querySelector('#parentAccessCard h3');
+      const accessHint = document.querySelector('#parentAccessCard p');
+      if (accessHeading) accessHeading.textContent = '👨‍👩‍👧 Switch child / sibling';
+      if (accessHint) accessHint.textContent = 'Enter another child’s student code to switch their report on this device. Each child’s report is loaded separately.';
       const input = document.getElementById('parentCodeInput');
       input.value = '';
       input.focus();
@@ -295,6 +299,10 @@
         }
 
         rememberParentStudent(code);
+        const accessHeading = document.querySelector('#parentAccessCard h3');
+        const accessHint = document.querySelector('#parentAccessCard p');
+        if (accessHeading) accessHeading.textContent = '🔑 Enter Your Child\'s Student Code';
+        if (accessHint) accessHint.textContent = 'Enter your child\'s student code. To view another child or sibling, switch students here. This device remembers the selected student for up to 7 days.';
         document.getElementById('parentAccessCard').style.display = 'none';
         document.getElementById('parentReportCard').style.display = 'block';
       } catch (error) {
@@ -306,7 +314,6 @@
       }
     }
 
-    document.getElementById('parentSwitchStudent').addEventListener('click', showParentCodeEntry);
     document.getElementById('parentSignOut').addEventListener('click', parentSignOut);
 
     // Restore the last selected student only while the original fixed 7-day window is valid.

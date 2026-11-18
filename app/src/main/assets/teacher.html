@@ -1611,7 +1611,7 @@
   if(document.readyState!=='loading')init();
 })();
 </script>
-  <script src="back-navigation.js" defer>
+  <script>
     // NEXORA teacher-assigned exams
     function renderTeacherExamStudentOptions() {
       const container = document.getElementById('teacherExamStudentOptions');
@@ -1703,7 +1703,7 @@
       document.querySelectorAll('.teacher-exam-student-choice').forEach(el => { el.checked = false; }); updateTeacherExamTargetSummary();
     });
     document.getElementById('teacherExamStudentOptions')?.addEventListener('change', updateTeacherExamTargetSummary);
-
-</script>
+  </script>
+  <script src="back-navigation.js" defer></script>
 </body>
 </html>
