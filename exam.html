@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXORA — Examination Centre & Revision</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="student-auth.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
     .exam-form {
@@ -103,6 +106,11 @@
         <div class="welcome-title">
           <h1>Examination Centre 🎯</h1>
           <p>Track exam countdowns, chapter revision progress, and enter Exam Mode.</p>
+          <section class="card" id="teacherAssignedExamsCard" style="margin-top:18px;">
+            <h2>Exams assigned by your teacher</h2>
+            <p style="color:var(--text-secondary);font-size:.86rem;">Your teacher's published exams appear here on every device.</p>
+            <div id="teacherAssignedExamsList" aria-live="polite">Checking your assigned exams…</div>
+          </section>
         </div>
         <button id="examModeBtn" class="btn" style="background: #10b981;" onclick="toggleExamMode()">Enter Exam Mode</button>
       </div>
@@ -287,6 +295,37 @@
     window.setInterval(renderExams, 60000);
   </script>
   <script src="navigation.js" defer></script>
-  <script src="back-navigation.js" defer></script>
+  <script src="back-navigation.js" defer>
+    async function loadNexoraTeacherAssignedExams() {
+      const list = document.getElementById('teacherAssignedExamsList');
+      if (!list || !window.supabaseClient) return;
+      const student = window.NEXORA_CURRENT_STUDENT;
+      if (!student?.id) { list.textContent = 'Sign in to your Student Portal to view exams assigned to you.'; return; }
+      list.textContent = 'Loading your exams…';
+      const { data: targets, error: targetError } = await supabaseClient.from('nexora_exam_targets')
+        .select('exam_id').eq('student_id', student.id);
+      if (targetError) { list.textContent = 'Could not load assigned exams. Please refresh or contact your teacher.'; console.warn('Assigned exam targets could not be loaded:', targetError.code || ''); return; }
+      const ids = [...new Set((targets || []).map(row => row.exam_id).filter(Boolean))];
+      if (!ids.length) { list.textContent = 'No exams have been assigned to you yet.'; return; }
+      const { data: exams, error } = await supabaseClient.from('nexora_exams')
+        .select('id,title,subject,instructions,starts_at,duration_minutes').in('id', ids)
+        .eq('status', 'published').order('starts_at', {ascending:true});
+      if (error) { list.textContent = 'Could not load your exams. Please refresh and try again.'; console.warn('Assigned exams could not be loaded:', error.code || ''); return; }
+      list.replaceChildren();
+      if (!exams?.length) { list.textContent = 'No published exams are currently assigned to you.'; return; }
+      exams.forEach(exam => {
+        const card=document.createElement('article'); card.style.cssText='padding:12px;margin:10px 0;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-primary);';
+        const heading=document.createElement('h3'); heading.textContent=exam.title+' · '+exam.subject;
+        const when=document.createElement('p'); when.style.cssText='margin:5px 0;color:var(--text-secondary);font-size:.86rem;';
+        when.textContent=new Date(exam.starts_at).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'})+' · '+exam.duration_minutes+' minutes';
+        card.append(heading,when);
+        if(exam.instructions){const note=document.createElement('p');note.style.cssText='font-size:.9rem;white-space:pre-wrap;';note.textContent=exam.instructions;card.appendChild(note);}
+        list.appendChild(card);
+      });
+    }
+    window.addEventListener('NEXORAStudentReady', loadNexoraTeacherAssignedExams);
+    if (window.NEXORA_CURRENT_STUDENT) loadNexoraTeacherAssignedExams();
+
+</script>
 </body>
 </html>
