@@ -28,7 +28,7 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="24dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/ic_nexora_logo" />
+            android:src="@drawable/ic_nexora_brand" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -285,7 +285,7 @@
                 android:scaleX="0.78"
                 android:scaleY="0.78"
                 android:alpha="0"
-                android:src="@drawable/ic_nexora_logo" />
+                android:src="@drawable/ic_nexora_brand" />
 
             <TextView
                 android:id="@+id/tvWelcomeName"
