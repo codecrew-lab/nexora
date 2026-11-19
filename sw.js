@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'NEXORA-Pwa-v25';
+const CACHE_NAME = 'NEXORA-Pwa-v26';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,7 +8,8 @@ const ASSETS_TO_CACHE = [
   './planner.html',
   './timetable.html',
   './exam.html',
-  './quiz.html',  './marks.html',
+  './quiz.html',
+  './marks.html',
   './attendance.html',
   './flashcards.html',
   './classroom.html',
@@ -29,8 +30,6 @@ const ASSETS_TO_CACHE = [
   './pwa-icon.svg'
 ];
 
-// Only these same-origin app files may be stored for offline use.
-// Supabase/Auth/API requests are deliberately excluded.
 const STATIC_ASSET_PATHS = new Set(
   ASSETS_TO_CACHE.map(path => new URL(path, self.registration.scope).pathname)
 );
@@ -47,7 +46,9 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+        keys
+          .filter(key => key.startsWith('NEXORA-Pwa-') && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
@@ -60,43 +61,36 @@ self.addEventListener('fetch', event => {
   const requestUrl = new URL(request.url);
   const scopeUrl = new URL(self.registration.scope);
 
-  // Never intercept external services such as Supabase or third-party CDNs.
   if (requestUrl.origin !== scopeUrl.origin) return;
 
   const isNavigation = request.mode === 'navigate';
   const isStaticAsset = STATIC_ASSET_PATHS.has(requestUrl.pathname);
-
-  // Do not cache same-origin API endpoints or arbitrary dynamic responses.
   if (!isNavigation && !isStaticAsset) return;
 
-  event.respondWith(
-    caches.open(CACHE_NAME).then(async cache => {
-      const cachedResponse = await cache.match(request);
-      const networkRequest = fetch(request).then(response => {
-        if (response && response.ok && response.type === 'basic') {
-          cache.put(request, response.clone()).catch(() => {});
-        }
-        return response;
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // Always ask the live site first. This prevents an installed Chrome PWA
+    // from repeatedly showing an older cached portals.html after deployment.
+    try {
+      const response = await fetch(request, { cache: 'no-store' });
+      if (response && response.ok && response.type === 'basic') {
+        cache.put(request, response.clone()).catch(() => {});
+      }
+      return response;
+    } catch (error) {
+      const cached = await cache.match(request);
+      if (cached) return cached;
+
+      if (isNavigation) {
+        const offlinePage = await cache.match(new URL('./portals.html', scopeUrl).href);
+        if (offlinePage) return offlinePage;
+      }
+
+      return new Response('NEXORA is offline. This page is not available in the offline cache.', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
       });
-
-      if (cachedResponse) {
-        // Refresh static content in the background; never cache private API data.
-        networkRequest.catch(() => {});
-        return cachedResponse;
-      }
-
-      try {
-        return await networkRequest;
-      } catch (error) {
-        if (isNavigation) {
-          const offlinePage = await cache.match(new URL('./portals.html', scopeUrl).href);
-          if (offlinePage) return offlinePage;
-        }
-        return new Response('NEXORA is offline. This page is not available in the offline cache.', {
-          status: 503,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-        });
-      }
-    })
-  );
+    }
+  })());
 });

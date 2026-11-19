@@ -1,10 +1,25 @@
-﻿// PWA Service Worker Registration & Install Button Handler
+// NEXORA PWA registration and update handling.
 (function () {
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
-        console.warn('PWA Service Worker registration failed:', err);
-      });
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('./sw.js?v=26', {
+          updateViaCache: 'none'
+        });
+
+        // Check the hosted worker immediately instead of waiting for Chrome's
+        // periodic update cycle.
+        registration.update().catch(() => {});
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+      } catch (err) {
+        console.warn('NEXORA service worker registration failed:', err);
+      }
     });
   }
 
@@ -75,7 +90,6 @@
     if (btn) btn.style.display = 'none';
   });
 
-  // Also check standalone mode
   if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
     const btn = document.getElementById('pwaInstallBtn');
     if (btn) btn.style.display = 'none';
