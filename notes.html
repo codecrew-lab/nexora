@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXORA — Digital Notes & Library</title>
+  <script>
+    // Apply the shared theme before stylesheets render to prevent a theme flash.
+    (function () {
+      try {
+        var preferredTheme = localStorage.getItem('auraway_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', preferredTheme);
+      } catch (error) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
   <style>
     .notes-toolbar {
@@ -142,19 +153,18 @@
   </div>
 
   <script>
-    // Keep the Digital Notes theme in sync with the rest of NEXORA.
-    // Reading the saved preference on page load prevents a flash/change to the default theme.
+    // Theme changes use the same shared preference as every NEXORA student page.
     const themeToggle = document.getElementById('themeToggle');
     const html = document.documentElement;
-    const savedTheme = localStorage.getItem('auraway_theme') || 'dark';
-    html.setAttribute('data-theme', savedTheme);
-
     if (themeToggle) {
       themeToggle.addEventListener('click', () => {
-        const currentTheme = html.getAttribute('data-theme') || 'dark';
-        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        const nextTheme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         html.setAttribute('data-theme', nextTheme);
-        localStorage.setItem('auraway_theme', nextTheme);
+        try {
+          localStorage.setItem('auraway_theme', nextTheme);
+        } catch (error) {
+          console.error('Could not save the NEXORA theme preference.', error);
+        }
       });
     }
 
