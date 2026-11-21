@@ -142,13 +142,21 @@
   </div>
 
   <script>
-    // Theme toggle
+    // Keep the Digital Notes theme in sync with the rest of NEXORA.
+    // Reading the saved preference on page load prevents a flash/change to the default theme.
     const themeToggle = document.getElementById('themeToggle');
     const html = document.documentElement;
-    themeToggle.addEventListener('click', () => {
-      const currentTheme = html.getAttribute('data-theme');
-      html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
-    });
+    const savedTheme = localStorage.getItem('auraway_theme') || 'dark';
+    html.setAttribute('data-theme', savedTheme);
+
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const currentTheme = html.getAttribute('data-theme') || 'dark';
+        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', nextTheme);
+        localStorage.setItem('auraway_theme', nextTheme);
+      });
+    }
 
     // Notes Management Logic with LocalStorage
     const noteForm = document.getElementById('noteForm');
