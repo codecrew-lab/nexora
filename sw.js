@@ -1,4 +1,8 @@
-const CACHE_NAME = 'NEXORA-Pwa-v28';
+const CACHE_NAME = 'NEXORA-Pwa-v29';
+
+// Keep this list limited to files that should be available offline.
+// Each file is cached independently so one missing/renamed optional page
+// cannot prevent the new service worker from installing.
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -19,6 +23,7 @@ const ASSETS_TO_CACHE = [
   './progress.html',
   './search.html',
   './settings.html',
+  './calendar.html',
   './style.css',
   './navigation.js',
   './student-auth.js',
@@ -35,11 +40,25 @@ const STATIC_ASSET_PATHS = new Set(
 );
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS_TO_CACHE))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // Do not let a single 404 or transient network error block an update.
+    await Promise.all(ASSETS_TO_CACHE.map(async path => {
+      try {
+        const response = await fetch(new Request(path, { cache: 'reload' }));
+        if (response && response.ok && response.type === 'basic') {
+          await cache.put(path, response);
+        } else {
+          console.warn('[NEXORA SW] Skipped unavailable asset:', path, response && response.status);
+        }
+      } catch (error) {
+        console.warn('[NEXORA SW] Could not precache asset:', path, error);
+      }
+    }));
+
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
@@ -70,8 +89,7 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
 
-    // Always ask the live site first. This prevents an installed Chrome PWA
-    // from repeatedly showing an older cached portals.html after deployment.
+    // Network-first: installed apps receive the current GitHub Pages files.
     try {
       const response = await fetch(request, { cache: 'no-store' });
       if (response && response.ok && response.type === 'basic') {
