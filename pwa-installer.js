@@ -3,13 +3,22 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('./sw.js?v=26', {
+        const registration = await navigator.serviceWorker.register('./sw.js?v=29', {
           updateViaCache: 'none'
         });
 
-        // Check the hosted worker immediately instead of waiting for Chrome's
-        // periodic update cycle.
-        registration.update().catch(() => {});
+        const checkForUpdate = () => {
+          if (navigator.onLine) registration.update().catch(() => {});
+        };
+
+        // Check immediately and whenever the installed app returns online or
+        // becomes visible again. This avoids relying only on Chrome's timer.
+        checkForUpdate();
+        window.addEventListener('focus', checkForUpdate);
+        window.addEventListener('online', checkForUpdate);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) checkForUpdate();
+        });
 
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
