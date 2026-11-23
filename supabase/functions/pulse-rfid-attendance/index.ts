@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: student, error: studentError } = await admin
       .from("students")
-      .select("student_code")
+      .select("student_code, student_name")
       .eq("id", card.student_id)
       .maybeSingle();
 
@@ -100,12 +100,17 @@ Deno.serve(async (req: Request) => {
       return json({
         result: "already_marked",
         status: existing?.status ?? "Recorded",
+        student_name: student.student_name ?? "Student",
         attendance_date: attendanceDate,
       });
     }
     if (insertError) throw insertError;
 
-    return json({ result: "present_marked", attendance_date: attendanceDate });
+    return json({
+      result: "present_marked",
+      student_name: student.student_name ?? "Student",
+      attendance_date: attendanceDate,
+    });
   } catch (error) {
     console.error("RFID attendance processing failed:", error);
     return json({ error: "Attendance could not be recorded." }, 500);
