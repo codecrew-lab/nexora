@@ -1,4 +1,4 @@
-const CACHE_NAME = 'NEXORA-Pwa-v29';
+const CACHE_NAME = 'NEXORA-Pwa-v30';
 
 // Keep this list limited to files that should be available offline.
 // Each file is cached independently so one missing/renamed optional page
