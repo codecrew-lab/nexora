@@ -30,7 +30,7 @@ const ASSETS_TO_CACHE = [
   './supabase.js',
   './pwa-installer.js',
   './portal-switcher.js',
-  './back-navigation.js',
+  './back-navigation.js',\n  './nexora-ai.js',\n  './nexora-ai.css',
   './manifest.json',
   './pwa-icon.svg'
 ];
