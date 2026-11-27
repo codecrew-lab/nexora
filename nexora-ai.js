@@ -99,14 +99,14 @@
     setBusy(true);
     const typing = addMessage('NEXORA AI is thinking…', 'assistant nxa-typing');
     try {
-      if (!window.supabaseClient?.auth || !window.supabaseClient?.functions) {
+      const client = typeof supabaseClient !== 'undefined' ? supabaseClient : null;\n      if (!client?.auth || !client?.functions) {
         throw new Error('The secure school connection is not available on this page.');
       }
-      const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
       if (sessionError || !sessionData?.session) {
         throw new Error('Please sign in to your NEXORA account before using the AI assistant.');
       }
-      const { data, error } = await window.supabaseClient.functions.invoke('nexora-ai-chat', {
+      const { data, error } = await client.functions.invoke('nexora-ai-chat', {
         body: { message }
       });
       if (error) throw new Error(data?.error || error.message || 'Could not reach NEXORA AI.');
