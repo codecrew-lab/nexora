@@ -99,7 +99,8 @@
     setBusy(true);
     const typing = addMessage('NEXORA AI is thinking…', 'assistant nxa-typing');
     try {
-      const client = typeof supabaseClient !== 'undefined' ? supabaseClient : null;\n      if (!client?.auth || !client?.functions) {
+      const client = typeof supabaseClient !== 'undefined' ? supabaseClient : null;
+      if (!client?.auth || !client?.functions) {
         throw new Error('The secure school connection is not available on this page.');
       }
       const { data: sessionData, error: sessionError } = await client.auth.getSession();
