@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#101426">
   <title>NEXORA — Teacher Portal</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=20261114-nav2">\n  <link rel="stylesheet" href="nexora-ai.css?v=1">
+  <link rel="stylesheet" href="style.css?v=20261114-nav2">
+  <link rel="stylesheet" href="nexora-ai.css?v=1">
   <script src="pwa-installer.js" defer></script>
   <script src="portal-switcher.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -850,9 +851,15 @@
 
     async function deleteAttendanceRecord(recordId, studentName, studentCode, attendanceDate, button) {
       const confirmed = window.confirm(
-        'Delete only this attendance record?\n\nStudent: ' + studentName +
-        '\nCode: ' + studentCode + '\nDate: ' + attendanceDate +
-        '\n\nThe student profile and all other dates will remain unchanged.'
+        'Delete only this attendance record?
+
+Student: ' + studentName +
+        '
+Code: ' + studentCode + '
+Date: ' + attendanceDate +
+        '
+
+The student profile and all other dates will remain unchanged.'
       );
       if (!confirmed) return;
 
@@ -1649,5 +1656,6 @@
   if(document.readyState!=='loading')init();
 })();
 </script>
-  <script src="nexora-ai.js?v=1" defer></script>\n  <script src="back-navigation.js" defer></script>
+  <script src="nexora-ai.js?v=1" defer></script>
+  <script src="back-navigation.js" defer></script>
 </body>
