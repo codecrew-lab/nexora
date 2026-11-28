@@ -8,9 +8,9 @@
 //   nexoraClient.auth.signInWithPassword / signInWithTeacherCodes / getSession / signOut
 // Nothing here is secret. The server decides what each signed-in user may do.
 
-// Where the NEXORA server is published (HTTPS, no trailing slash), for example
-// 'https://api.school.example'. Pages opened from localhost use a local server.
-const NEXORA_PRODUCTION_API_URL = '';
+// Where the NEXORA server is published (HTTPS, no trailing slash). Pages opened
+// from localhost use a local server instead.
+const NEXORA_PRODUCTION_API_URL = 'https://nexora-api.azurewebsites.net';
 
 const NEXORA_API_URL = (() => {
   if (typeof window.NEXORA_API_URL === 'string') return window.NEXORA_API_URL;

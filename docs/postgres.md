@@ -85,7 +85,7 @@ tried on one machine.
    server can reach the database.
 2. **Point the portals at it** in `nexora-api.js`:
    ```js
-   const NEXORA_PRODUCTION_API_URL = 'https://api.your-school.example';
+   const NEXORA_PRODUCTION_API_URL = 'https://nexora-api.azurewebsites.net';
    ```
    Merge to `main`. GitHub Pages publishes the portals; build and distribute new
    Android APKs (they bundle the same files).
@@ -93,8 +93,25 @@ tried on one machine.
    ([reader guide](../hardware/nexora_rfid_reader/README.md)). The server's
    certificate must chain to a root in the reader's `certificates.h`.
 
-Until step 2 is merged with a real address, the published portals have no
-backend and show "service unavailable".
+### Where it runs today
+
+| Piece | Where |
+| --- | --- |
+| Server | Azure App Service `nexora-api` (plan `nexora-plan`, Basic B1, Central US, resource group `seeds`): <https://nexora-api.azurewebsites.net> |
+| Database | Azure Database for PostgreSQL (Central US), database `nexora`. This repository is public, so the server's name is kept out of it: see `DATABASE_URL` in the web app's settings |
+| Settings | App Service → Environment variables (the same names as `.env`) |
+
+The database firewall allows the web app's outbound addresses (rules named
+`nexora-api-out-*`). If the plan is scaled to another tier those addresses can
+change: compare with `az webapp show -g seeds -n nexora-api --query possibleOutboundIpAddresses`.
+
+To deploy a new version of the server:
+
+```sh
+cd server && npm ci --omit=dev
+zip -qr ../nexora-server.zip src scripts package.json package-lock.json node_modules
+az webapp deploy -g seeds -n nexora-api --src-path ../nexora-server.zip --type zip
+```
 
 ## Changing the schema later
 

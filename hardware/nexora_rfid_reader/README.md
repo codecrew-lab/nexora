@@ -47,7 +47,8 @@ Pins can be changed in `config.h`.
    - `WIFI_SSID` / `WIFI_PASSWORD` (2.4 GHz network)
    - `DEVICE_SECRET`: the same value as `PULSE_RFID_DEVICE_SECRET` in the
      NEXORA server's environment
-   - `ATTENDANCE_ENDPOINT`: `https://<your server>/api/rfid/attendance`
+   - `ATTENDANCE_ENDPOINT`: already set to the NEXORA server; change it only if
+     the server moves
    - `DEVICE_ID`: a short name such as `main-gate` or `class-8a`
 4. Open `nexora_rfid_reader.ino`, select **ESP32 Dev Module**, and upload.
 5. Open the Serial Monitor at **115200** baud to see what the reader is doing.
@@ -96,8 +97,8 @@ Lost card: press **Deactivate** next to it in the portal, then assign the new ca
 - **Heartbeat** every 5 minutes, so the teacher portal can show whether the reader
   is online, its Wi-Fi signal and its queue size.
 - **RC522 watchdog**: the reader is re-initialised if it stops responding.
-- **TLS** is verified against the Google Trust Services and Let's Encrypt roots in
-  `certificates.h` (valid until 2035–2036).
+- **TLS** is verified against the DigiCert, Let's Encrypt and Google Trust
+  Services roots in `certificates.h` (valid until 2035–2038).
 
 ## Troubleshooting
 
