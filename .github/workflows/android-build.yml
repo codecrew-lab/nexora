@@ -7,6 +7,12 @@ on:
       - "gradle/**"
       - "*.gradle.kts"
       - "settings.gradle.kts"
+      # The APKs bundle the web portal from the repository root.
+      - "*.html"
+      - "*.js"
+      - "*.css"
+      - "manifest.json"
+      - "pwa-icon.*"
       - ".github/workflows/android-build.yml"
   push:
     branches: [main]
@@ -15,6 +21,12 @@ on:
       - "gradle/**"
       - "*.gradle.kts"
       - "settings.gradle.kts"
+      # The APKs bundle the web portal from the repository root.
+      - "*.html"
+      - "*.js"
+      - "*.css"
+      - "manifest.json"
+      - "pwa-icon.*"
       - ".github/workflows/android-build.yml"
 
 permissions:

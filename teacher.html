@@ -11,6 +11,8 @@
   <script src="portal-switcher.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
+  <script src="attendance-utils.js"></script>
+  <script src="teacher-rfid.js"></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
     .standalone-wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
@@ -55,13 +57,30 @@
 
     @media(max-width:600px){.teacher-overview-grid{grid-template-columns:1fr 1fr}.teacher-overview-card:last-child{grid-column:1/-1}.teacher-roster-tools{grid-template-columns:1fr}.teacher-roster-count{white-space:normal}}
 
+
+    /* RFID attendance panel (teacher-rfid.js) and attendance register */
+    .rfid-muted{color:var(--text-secondary);font-size:.85rem}
+    .rfid-block{display:block;margin-top:3px}
+    .rfid-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;margin:14px 0}
+    .rfid-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--bg-primary);margin-bottom:8px}
+    .rfid-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:.72rem;font-weight:700;white-space:nowrap}
+    .rfid-badge-green{background:rgba(16,185,129,.15);color:#10b981}
+    .rfid-badge-red{background:rgba(239,68,68,.15);color:#ef4444}
+    .rfid-badge-amber{background:rgba(245,158,11,.15);color:#f59e0b}
+    .rfid-badge-grey{background:rgba(148,163,184,.15);color:var(--text-secondary)}
+    .rfid-uid{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}
+    .rfid-big{font-size:1.6rem}
+    .rfid-inactive{opacity:.6}
+    .rfid-section-title{margin:18px 0 8px}
+    .rfid-feed{max-height:420px;overflow:auto}
+    .attendance-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);background:rgba(99,102,241,.08);font-size:.88rem}
   </style>
 </head>
 <body class="NEXORA-Teacher-portal">
   <section id="teacherLoginPanel" class="standalone-wrap" style="max-width:440px;">
     <div class="card">
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-        <img class="nexora-app-logo" src="pwa-icon.png" width="40" height="40" alt="NEXORA-T" style="border-radius:9px;object-fit:cover;vertical-align:middle;">
+        <img class="nexora-app-logo" src="pwa-icon.svg" alt="NEXORA graduation cap and open book logo" width="40" height="40" style="border-radius:9px;object-fit:cover;vertical-align:middle;">
         <h1 style="margin:0;">NEXORA-T — Teacher Sign In 👩‍🏫</h1>
       </div>
       <p style="color:var(--text-secondary);margin:8px 0 16px;">Enter your login code and secret access code to continue.</p>
@@ -78,7 +97,7 @@
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
     <sidebar id="aurawaySidebar" aria-label="Teacher navigation">
       <div class="logo-area">
-        <img class="nexora-app-logo" src="pwa-icon.png" width="34" height="34" alt="NEXORA-T" style="border-radius:8px;object-fit:cover;vertical-align:middle;">
+        <img class="nexora-app-logo" src="pwa-icon.svg" alt="NEXORA graduation cap and open book logo" width="34" height="34" style="border-radius:8px;object-fit:cover;vertical-align:middle;">
         <span class="logo-text">NEXORA-T</span>
       </div>
       <nav aria-label="Teacher portal navigation">
@@ -87,9 +106,11 @@
           <li><a href="#teacherStudentsSection">👥 <span>Students</span></a></li>
           <li><a href="#teacherTimetableManager">🗓️ <span>Timetable</span></a></li>
           <li><a href="#teacherAttendanceManager">📋 <span>Attendance</span></a></li>
+          <li><a href="#teacherRfidSection">📡 <span>RFID Attendance</span></a></li>
           <li><a href="#teacherMarksSection">📝 <span>Marks</span></a></li>
           <li><a href="#teacherAssignmentsSection" id="teacherAssignmentsNav">📚 <span>Assignments</span></a></li>
           <li><a href="#teacherAssignmentStatusPage" id="teacherAssignmentStatusNav">📊 <span>Assignment Completion Status</span></a></li>
+          <li><a href="#teacherExamManager">📝 <span>Assigned Exams</span></a></li>
           <li><a href="#teacherQuizManager">🧠 <span>Quiz Manager</span></a></li>          <li><a href="#teacherActivitySection">🔔 <span>Activity</span></a></li>
           <li><a href="#teacherAnalyticsSection">📊 <span>Analytics</span></a></li>
         </ul>
@@ -123,6 +144,7 @@
         <button type="button" class="btn teacher-secondary-action" id="openTeacherAssignmentsPage">＋ Create / Publish Assignment</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherPushSection').scrollIntoView({behavior:'smooth'})">🔔 Send notification</button>
         <button type="button" class="btn teacher-secondary-action" id="openAssignmentStatusFromDashboard">📊 Assignment Completion Status</button>
+        <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherExamManager').scrollIntoView({behavior:'smooth'})">＋ Assign an Exam</button>
       </div>
 
       <div class="card" style="margin-top:20px;">
@@ -155,6 +177,37 @@
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><button type="submit" class="btn" id="pushSendButton">📣 Send notification</button><p id="pushSendStatus" role="status" style="margin:0;font-size:.85rem;color:var(--text-secondary);"></p></div>
       </form>
+    </section>
+
+    <section id="teacherExamManager" class="card" style="margin:0 0 22px;scroll-margin-top:20px;">
+      <div class="teacher-command-heading" style="margin-bottom:14px;">
+        <div><span class="teacher-eyebrow">NEXORA EXAM CENTRE</span><h2>＋ Assign an Exam to Students</h2><p>Create a scheduled exam and publish it to all students or selected students. It appears in their Student Portal.</p></div>
+        <span class="teacher-live-label"><span></span> Teacher controls</span>
+      </div>
+      <form id="teacherExamCreateForm" class="quiz-manager-card" style="display:grid;gap:12px;">
+        <div class="quiz-manager-fields">
+          <label>Exam title<input id="teacherExamTitle" class="input-field" maxlength="160" required placeholder="e.g. Unit Test 1"></label>
+          <label>Subject<input id="teacherExamSubject" class="input-field" maxlength="100" required placeholder="e.g. Mathematics"></label>
+          <label>Start date and time<input id="teacherExamStartsAt" class="input-field" type="datetime-local" required></label>
+          <label>Duration (minutes)<input id="teacherExamDuration" class="input-field" type="number" min="1" max="600" value="60" required></label>
+          <label class="full">Instructions (optional)<textarea id="teacherExamInstructions" class="input-field" rows="3" maxlength="5000" placeholder="Exam instructions for students"></textarea></label>
+        </div>
+        <div style="border:1px solid var(--border-color);border-radius:12px;padding:12px;">
+          <strong>Assign to</strong>
+          <label style="display:flex;gap:9px;align-items:center;margin:10px 0;"><input type="checkbox" id="teacherExamAllStudents" checked> All registered students</label>
+          <div id="teacherExamStudentPicker" hidden>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
+              <button type="button" class="btn teacher-secondary-action" id="teacherExamSelectAll" style="padding:6px 10px;">Select all</button>
+              <button type="button" class="btn teacher-secondary-action" id="teacherExamClearSelection" style="padding:6px 10px;">Clear selection</button>
+            </div>
+            <div id="teacherExamStudentOptions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;max-height:260px;overflow:auto;"></div>
+          </div>
+          <p id="teacherExamTargetSummary" style="font-size:.82rem;color:var(--text-secondary);margin:8px 0 0;">This exam will be assigned to all registered students.</p>
+        </div>
+        <p id="teacherExamCreateMessage" role="status" aria-live="polite" style="min-height:20px;margin:0;color:var(--text-secondary);"></p>
+        <div><button type="submit" class="btn" id="teacherExamPublishButton">Publish exam to students</button></div>
+      </form>
+      <div style="margin-top:18px;"><h3>Published exams</h3><div id="teacherExamList" aria-live="polite"><p style="color:var(--text-secondary);">Loading exams…</p></div></div>
     </section>
     <section id="teacherQuizManager" class="card" style="margin:0 0 22px;scroll-margin-top:20px;">
       <div class="teacher-command-heading" style="margin-bottom:14px;">
@@ -283,7 +336,7 @@
     <!-- Teacher Attendance Manager -->
     <div class="card" style="margin-bottom:20px;" id="teacherAttendanceManager">
       <h3>📋 Class Attendance Manager</h3>
-      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date to mark attendance. Existing records have an individual delete control; deleting one record never deletes a student's profile or other attendance.</p>
+      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date. Students who tapped their RFID card are already marked; set the rest and save. Only changed rows are saved. Deleting one record never deletes a student's profile or other attendance.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
         <select id="attendanceClassSelect" class="input-field"><option value="">Select class</option></select>
         <input id="attendanceDateInput" class="input-field" type="date">
@@ -293,6 +346,54 @@
       <button type="button" class="btn" id="saveClassAttendance" style="margin-top:12px;display:none;background:#059669;">Save Class Attendance</button>
       <p id="attendanceSaveMessage" role="status" style="margin-top:10px;"></p>
     </div>
+
+    <!-- RFID Attendance (logic in teacher-rfid.js) -->
+    <section class="card" style="margin-bottom:20px;" id="teacherRfidSection" aria-labelledby="teacherRfidHeading">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h3 id="teacherRfidHeading">📡 RFID Attendance</h3>
+          <p class="rfid-muted" style="margin-top:6px;">Students tap their card at the classroom reader and are marked Present automatically. Assign new cards, follow today's taps and check that readers are online.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <small class="rfid-muted" id="rfidUpdatedAt"></small>
+          <button type="button" class="btn" id="rfidRefresh" style="padding:7px 12px;">Refresh</button>
+        </div>
+      </div>
+      <p id="rfidMessage" role="status" class="rfid-muted" style="margin-top:8px;"></p>
+
+      <div class="rfid-grid">
+        <div class="stat-box">
+          <h4>Today</h4>
+          <div id="rfidTodaySummary" style="margin-top:8px;"><span class="rfid-muted">Loading…</span></div>
+          <form id="rfidLateForm" style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <label for="rfidLateAfter" class="rfid-muted">Late after</label>
+            <input id="rfidLateAfter" class="input-field" type="time" style="max-width:130px;" required>
+            <button type="submit" class="btn" style="padding:7px 12px;">Save</button>
+          </form>
+        </div>
+        <div class="stat-box">
+          <h4>Readers</h4>
+          <div id="rfidReaders" style="margin-top:8px;"><span class="rfid-muted">Loading…</span></div>
+        </div>
+      </div>
+
+      <h4 class="rfid-section-title">Unknown cards</h4>
+      <div id="rfidUnknownCards"><span class="rfid-muted">Loading…</span></div>
+
+      <h4 class="rfid-section-title">Today's taps</h4>
+      <div id="rfidScanFeed" class="rfid-feed"><span class="rfid-muted">Loading…</span></div>
+
+      <details style="margin-top:16px;">
+        <summary style="cursor:pointer;font-weight:700;">Registered cards (<span id="rfidCardCount">0</span> active)</summary>
+        <form id="rfidRegisterForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0;">
+          <select id="rfidRegisterStudent" class="input-field" required><option value="">Choose student</option></select>
+          <input id="rfidRegisterUid" class="input-field rfid-uid" placeholder="Card UID, e.g. 39C38E02" autocomplete="off" autocapitalize="characters" required>
+          <button type="submit" class="btn" id="rfidRegisterButton">Register card</button>
+        </form>
+        <input id="rfidCardSearch" class="input-field" type="search" placeholder="Search by student or UID" style="margin-bottom:10px;">
+        <div id="rfidCardList"></div>
+      </details>
+    </section>
 
 
     <section id="teacherAnalyticsSection" class="card" style="margin:0 0 20px;" aria-labelledby="teacherAnalyticsHeading">
@@ -336,15 +437,9 @@
       </div>
     </section>
 
-    <section id="teacherActivitySection">
-    <!-- Live Student Updates -->
-    <div class="card" style="margin-bottom: 20px;">
-      <h3>🔔 Live Student Updates & Completions</h3>
-      <div id="studentActivityFeed" style="margin-top: 12px;">
-        <p style="color:var(--text-secondary);">Loading activity...</p>
-      </div>
-    </div>
-
+    <section id="teacherActivitySection" class="card" style="margin:0 0 20px;" aria-labelledby="teacherActivityHeading">
+      <h3 id="teacherActivityHeading" style="margin:0;">🔔 Live Student Updates &amp; Completions</h3>
+      <p style="margin:8px 0 0;color:var(--text-secondary);font-size:.85rem;">No live student updates are displayed here.</p>
     </section>
 
     <section id="teacherAssignmentsSection" class="card" hidden style="margin:0 0 20px;" aria-labelledby="teacherAssignmentsHeading">
@@ -414,9 +509,11 @@
     const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/bright-handler';
 
     async function showTeacherPortal(session) {
+      window.NEXORA_TEACHER_USER_ID = session?.user?.id;
       const email = session?.user?.email?.toLowerCase();
       const appRole = session?.user?.app_metadata?.role;
       const isAuthorisedTeacher = email === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(appRole);
+      window.NEXORA_CAN_DELETE_STUDENT_ACTIVITY = email === 'teacher@auraway.app' || appRole === 'school_admin';
       if (!isAuthorisedTeacher) {
         await supabaseClient.auth.signOut();
         document.getElementById('teacherLoginError').textContent = 'This account is not authorized for the teacher portal.';
@@ -430,10 +527,10 @@
       await loadStudentsRoster();
       await loadTeacherMarks();
       await loadTeacherAnalytics();
-      loadStudentActivity();
       loadAssignmentOverview();
       await loadTeacherAssignmentManager();
       await loadTeacherQuizManager();
+      await loadTeacherExams();
     }
 
     async function signInTeacher(event) {
@@ -514,9 +611,11 @@
       populateAttendanceClasses();
       populateAssignmentTargets();
       populatePushTargets();
+      renderTeacherExamStudentOptions();
       populateTeacherMarkStudents();
       updateTeacherOverview();
       populateTeacherRosterFilter();
+      window.NexoraRfidAdmin?.studentsChanged(allStudents);
       if (allStudents.length === 0) {
         container.innerHTML = '<p style="color:var(--text-secondary);">No students added yet.</p>';
         return;
@@ -792,23 +891,7 @@
       }
     });
 
-    function attendanceTimeDetails(record) {
-      if (!record?.created_at) return '';
-      const instant = new Date(record.created_at);
-      if (Number.isNaN(instant.getTime())) return '';
-      const displayTime = instant.toLocaleTimeString('en-IN', {
-        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
-      });
-      if (record.marked_by == null && record.status === 'Present') {
-        const clock = new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-        }).format(instant);
-        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
-      }
-      return 'Recorded: ' + displayTime;
-    }
-
-    async function loadAttendanceRoster() {
+    async function loadAttendanceRoster(statusMessage) {
       const className = document.getElementById('attendanceClassSelect').value;
       const date = document.getElementById('attendanceDateInput').value;
       const roster = document.getElementById('teacherAttendanceRoster');
@@ -827,17 +910,25 @@
         return;
       }
       const codes = students.map(student => student.student_code);
+      // select('*') works both before and after the RFID v2 migration adds columns.
       const { data: records, error } = await supabaseClient.from('attendance_records')
-        .select('id,student_code,status,created_at,marked_by').eq('attendance_date', date).in('student_code', codes);
+        .select('*').eq('attendance_date', date).in('student_code', codes);
       if (error) {
         roster.textContent = 'Could not load attendance. ' + error.message;
         saveButton.style.display = 'none';
         return;
       }
       const existing = new Map((records || []).map(record => [record.student_code, record]));
+      const counts = { rfid: 0, teacher: 0, unmarked: 0, late: 0 };
       roster.innerHTML = '';
+      const rows = document.createDocumentFragment();
       students.forEach(student => {
         const record = existing.get(student.student_code);
+        if (!record) counts.unmarked++;
+        else if (NexoraAttendance.isRfid(record)) counts.rfid++;
+        else counts.teacher++;
+        if (NexoraAttendance.isLate(record)) counts.late++;
+
         const row = document.createElement('div');
         row.className = 'student-row';
         const info = document.createElement('div');
@@ -849,21 +940,29 @@
         info.append(name, document.createElement('br'), code);
         const timing = document.createElement('small');
         timing.style.cssText = 'display:block;margin-top:5px;color:var(--text-secondary);font-size:.78rem;';
-        timing.textContent = attendanceTimeDetails(record);
-        if (timing.textContent) info.appendChild(timing);
+        timing.textContent = record ? NexoraAttendance.timeDetails(record) : 'Not marked yet';
+        info.appendChild(timing);
         const actions = document.createElement('div');
         actions.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
         const select = document.createElement('select');
         select.className = 'input-field attendance-status-select';
         select.dataset.studentCode = student.student_code;
+        select.dataset.original = record?.status || '';
         select.style.maxWidth = '180px';
+        if (!record) {
+          const blank = document.createElement('option');
+          blank.value = '';
+          blank.textContent = '— Not marked —';
+          select.appendChild(blank);
+        }
         ['Present','Absent','Leave'].forEach(status => {
           const option = document.createElement('option');
           option.value = status;
           option.textContent = status === 'Present' ? 'Present ✅' : status === 'Absent' ? 'Absent ❌' : 'Leave 📝';
           select.appendChild(option);
         });
-        select.value = record?.status || 'Present';
+        select.value = record?.status || '';
+        select.addEventListener('change', updateAttendanceSaveState);
         actions.appendChild(select);
 
         if (record?.id) {
@@ -882,9 +981,55 @@
           actions.appendChild(deleteButton);
         }
         row.append(info, actions);
-        roster.appendChild(row);
+        rows.appendChild(row);
       });
+
+      const summary = document.createElement('div');
+      summary.className = 'attendance-summary';
+      const summaryText = document.createElement('span');
+      summaryText.textContent = '📡 ' + counts.rfid + ' tapped in' + (counts.late ? ' (' + counts.late + ' late)' : '') +
+        ' · ✍️ ' + counts.teacher + ' marked by teacher · ⏳ ' + counts.unmarked + ' not marked';
+      summary.appendChild(summaryText);
+      if (counts.unmarked) {
+        const bulk = document.createElement('span');
+        bulk.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+        [['Absent', 'Mark rest Absent', '#b45309'], ['Present', 'Mark rest Present', '#059669']].forEach(([status, label, colour]) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn';
+          button.textContent = label;
+          button.style.cssText = 'padding:6px 10px;font-size:.8rem;background:' + colour + ';';
+          button.addEventListener('click', () => markUnmarkedAttendance(status));
+          bulk.appendChild(button);
+        });
+        summary.appendChild(bulk);
+      }
+      roster.append(summary, rows);
       saveButton.style.display = 'inline-flex';
+      updateAttendanceSaveState();
+      if (statusMessage) {
+        message.style.color = '#10b981';
+        message.textContent = statusMessage;
+      }
+    }
+
+    function changedAttendanceSelects() {
+      return [...document.querySelectorAll('.attendance-status-select')]
+        .filter(select => select.value && select.value !== select.dataset.original);
+    }
+
+    function updateAttendanceSaveState() {
+      const button = document.getElementById('saveClassAttendance');
+      const changed = changedAttendanceSelects().length;
+      button.disabled = changed === 0;
+      button.textContent = changed ? 'Save ' + changed + (changed === 1 ? ' change' : ' changes') : 'No changes to save';
+    }
+
+    function markUnmarkedAttendance(status) {
+      document.querySelectorAll('.attendance-status-select').forEach(select => {
+        if (!select.dataset.original && !select.value) select.value = status;
+      });
+      updateAttendanceSaveState();
     }
 
     async function deleteAttendanceRecord(recordId, studentName, studentCode, attendanceDate, button) {
@@ -914,41 +1059,37 @@
         return;
       }
 
-      message.style.color = '#10b981';
-      message.textContent = 'One attendance record deleted. Student profile and other dates were not changed.';
-      await loadAttendanceRoster();
+      await loadAttendanceRoster('One attendance record deleted. Student profile and other dates were not changed.');
     }
 
     async function saveClassAttendance() {
-      const selects = [...document.querySelectorAll('.attendance-status-select')];
       const date = document.getElementById('attendanceDateInput').value;
       const message = document.getElementById('attendanceSaveMessage');
-      if (!selects.length || !date) return;
+      const changed = changedAttendanceSelects();
+      if (!changed.length || !date) return;
       const button = document.getElementById('saveClassAttendance');
       button.disabled = true;
       button.textContent = 'Saving…';
-      const records = selects.map(select => ({
+      // Only changed rows are sent, so RFID tap records that were not touched keep their tap time.
+      const records = changed.map(select => ({
         student_code: select.dataset.studentCode,
         attendance_date: date,
         status: select.value
       }));
       const { error } = await supabaseClient.from('attendance_records')
         .upsert(records, { onConflict: 'student_code,attendance_date' });
-      button.disabled = false;
-      button.textContent = 'Save Class Attendance';
       if (error) {
+        updateAttendanceSaveState();
         message.style.color = '#ef4444';
         message.textContent = 'Save failed: ' + error.message + '. Check the Supabase SQL setup and teacher login.';
         return;
       }
-      message.style.color = '#10b981';
-      message.textContent = 'Attendance saved for ' + records.length + ' students.';
-      await loadAttendanceRoster();
+      await loadAttendanceRoster('Saved ' + records.length + (records.length === 1 ? ' change.' : ' changes.'));
       loadStudentsRoster();
     }
 
-    document.getElementById('attendanceDateInput').valueAsDate = new Date();
-    document.getElementById('loadAttendanceClass').addEventListener('click', loadAttendanceRoster);
+    document.getElementById('attendanceDateInput').value = NexoraAttendance.todayIso();
+    document.getElementById('loadAttendanceClass').addEventListener('click', () => loadAttendanceRoster());
     document.getElementById('saveClassAttendance').addEventListener('click', saveClassAttendance);
 
         async function loadAssignmentOverview() {
@@ -1147,55 +1288,6 @@
     }
     document.getElementById('refreshTeacherAnalytics').addEventListener('click',loadTeacherAnalytics);
     window.addEventListener('resize',()=>{if(document.getElementById('teacherAnalyticsSection'))loadTeacherAnalytics();});
-
-    let studentActivityItems = [];
-    let studentActivityLimit = 3;
-
-    function renderStudentActivity() {
-      const feed = document.getElementById('studentActivityFeed');
-      feed.innerHTML = '';
-      studentActivityItems.slice(0, studentActivityLimit).forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'student-row';
-        const detail = item.status === 'Completed'
-          ? `✅ Marked done: <strong>${item.assignment_title}</strong>`
-          : item.status === 'Not Completed'
-            ? `↩️ Marked not done: <strong>${item.assignment_title}</strong>`
-            : `💬 Note: <em>"${item.student_note || ''}"</em>`;
-        div.innerHTML = `
-          <div>
-            <strong>${item.student_name}</strong> <span class="code-badge">${item.student_code}</span>
-            <div style="font-size:0.85rem; margin-top:4px;">${detail}</div>
-          </div>
-        `;
-        feed.appendChild(div);
-      });
-      if (studentActivityItems.length > studentActivityLimit) {
-        const more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'btn teacher-secondary-action';
-        more.style.cssText = 'display:block;margin:14px auto 4px;padding:10px 22px;';
-        more.textContent = 'Show 4 more (' + (studentActivityItems.length - studentActivityLimit) + ' remaining)';
-        more.addEventListener('click', () => {
-          studentActivityLimit += 4;
-          renderStudentActivity();
-        });
-        feed.appendChild(more);
-      }
-    }
-
-    async function loadStudentActivity() {
-      const feed = document.getElementById('studentActivityFeed');
-      const { data, error } = await supabaseClient.from('student_updates').select('*').order('updated_at', { ascending: false }).limit(100);
-      if (error || !data || data.length === 0) {
-        studentActivityItems = [];
-        feed.innerHTML = '<p style="color:var(--text-secondary);">No student updates yet.</p>';
-        return;
-      }
-      studentActivityItems = data;
-      studentActivityLimit = 3;
-      renderStudentActivity();
-    }
 
     function toggleSelectAll() {
       const boxes = document.querySelectorAll('.student-checkbox');
@@ -1591,6 +1683,99 @@
     document.getElementById('teacherQuizResetButton').addEventListener('click', resetTeacherQuizForm);
     document.getElementById('teacherQuizRefreshButton').addEventListener('click', loadTeacherQuizManager);
     document.getElementById('teacherQuizFilter').addEventListener('change', loadTeacherQuizManager);
+
+    // NEXORA teacher-assigned exams
+    function renderTeacherExamStudentOptions() {
+      const container = document.getElementById('teacherExamStudentOptions');
+      if (!container) return;
+      container.replaceChildren();
+      [...allStudents].sort((a,b) => String(a.class_name || '').localeCompare(String(b.class_name || '')) || String(a.student_name || '').localeCompare(String(b.student_name || ''))).forEach(student => {
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex;gap:8px;align-items:center;padding:7px;border:1px solid var(--border-color);border-radius:8px;';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.className = 'teacher-exam-student-choice'; checkbox.value = String(student.id);
+        const text = document.createElement('span');
+        text.textContent = (student.student_name || 'Student') + ' · ' + (student.class_name || 'Unassigned class');
+        label.append(checkbox, text); container.appendChild(label);
+      });
+      updateTeacherExamTargetSummary();
+    }
+    function updateTeacherExamTargetSummary() {
+      const all = document.getElementById('teacherExamAllStudents'), summary = document.getElementById('teacherExamTargetSummary');
+      if (!all || !summary) return;
+      const count = document.querySelectorAll('.teacher-exam-student-choice:checked').length;
+      summary.textContent = all.checked ? 'This exam will be assigned to all registered students (' + allStudents.length + ').' : count + ' student(s) selected.';
+    }
+    async function loadTeacherExams() {
+      const container = document.getElementById('teacherExamList');
+      if (!container || !supabaseClient || !window.NEXORA_TEACHER_USER_ID) return;
+      container.textContent = 'Loading exams…';
+      const { data, error } = await supabaseClient.from('nexora_exams')
+        .select('id,title,subject,starts_at,duration_minutes,status')
+        .eq('created_by', window.NEXORA_TEACHER_USER_ID).eq('created_by_role', 'teacher')
+        .order('starts_at', { ascending: true });
+      if (error) { container.textContent = 'Could not load exams: ' + error.message; return; }
+      container.replaceChildren();
+      if (!data?.length) { container.textContent = 'No exams published yet.'; return; }
+      data.forEach(exam => {
+        const card = document.createElement('article');
+        card.style.cssText = 'padding:12px;margin:9px 0;border:1px solid var(--border-color);border-radius:12px;';
+        const heading = document.createElement('strong'); heading.textContent = exam.title + ' · ' + exam.subject;
+        const details = document.createElement('p'); details.style.cssText = 'margin:6px 0 0;color:var(--text-secondary);font-size:.84rem;';
+        details.textContent = new Date(exam.starts_at).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'}) + ' · ' + exam.duration_minutes + ' minutes · ' + exam.status;
+        card.append(heading, details); container.appendChild(card);
+      });
+    }
+    async function publishTeacherExam(event) {
+      event.preventDefault();
+      const form = document.getElementById('teacherExamCreateForm'), message = document.getElementById('teacherExamCreateMessage'), button = document.getElementById('teacherExamPublishButton');
+      if (!supabaseClient || !window.NEXORA_TEACHER_USER_ID) { message.textContent = 'Please sign in to the teacher portal again.'; return; }
+      const allToggle = document.getElementById('teacherExamAllStudents');
+      const chosen = [...document.querySelectorAll('.teacher-exam-student-choice:checked')].map(el => Number(el.value)).filter(Number.isSafeInteger);
+      const recipients = allToggle.checked ? allStudents.map(s => s.id) : chosen;
+      if (!recipients.length) { message.textContent = 'Select at least one student before publishing.'; return; }
+      if (!allStudents.length) { message.textContent = 'Student list is not ready. Refresh the teacher portal and try again.'; return; }
+      const title = document.getElementById('teacherExamTitle').value.trim(), subject = document.getElementById('teacherExamSubject').value.trim();
+      const startsValue = document.getElementById('teacherExamStartsAt').value, duration = Number(document.getElementById('teacherExamDuration').value);
+      if (!title || !subject || !startsValue || !Number.isInteger(duration) || duration < 1 || duration > 600) { message.textContent = 'Check the title, subject, date and duration.'; return; }
+      button.disabled = true; message.textContent = 'Publishing exam…';
+      try {
+        const { data: exam, error: examError } = await supabaseClient.from('nexora_exams').insert({
+          title, subject, instructions: document.getElementById('teacherExamInstructions').value.trim(),
+          starts_at: new Date(startsValue).toISOString(), duration_minutes: duration, status: 'published',
+          visibility: 'assigned', created_by: window.NEXORA_TEACHER_USER_ID, created_by_role: 'teacher', created_by_student_id: null
+        }).select('id').single();
+        if (examError) throw examError;
+        const targets = recipients.map(studentId => ({exam_id:exam.id,student_id:studentId,assigned_by:window.NEXORA_TEACHER_USER_ID}));
+        const { error: targetError } = await supabaseClient.from('nexora_exam_targets').insert(targets);
+        if (targetError) {
+          await supabaseClient.from('nexora_exams').delete().eq('id', exam.id);
+          throw targetError;
+        }
+        form.reset(); allToggle.checked = true;
+        document.getElementById('teacherExamDuration').value = '60';
+        document.getElementById('teacherExamStudentPicker').hidden = true;
+        document.querySelectorAll('.teacher-exam-student-choice').forEach(el => { el.checked = false; });
+        updateTeacherExamTargetSummary();
+        message.textContent = 'Exam published successfully to ' + recipients.length + ' student(s).';
+        await loadTeacherExams();
+      } catch (error) {
+        console.error('NEXORA exam publishing failed:', error);
+        message.textContent = error?.message || 'Unable to publish this exam. Check your connection and teacher permissions.';
+      } finally { button.disabled = false; }
+    }
+    document.getElementById('teacherExamCreateForm')?.addEventListener('submit', publishTeacherExam);
+    document.getElementById('teacherExamAllStudents')?.addEventListener('change', event => {
+      document.getElementById('teacherExamStudentPicker').hidden = event.target.checked; updateTeacherExamTargetSummary();
+    });
+    document.getElementById('teacherExamSelectAll')?.addEventListener('click', () => {
+      document.querySelectorAll('.teacher-exam-student-choice').forEach(el => { el.checked = true; }); updateTeacherExamTargetSummary();
+    });
+    document.getElementById('teacherExamClearSelection')?.addEventListener('click', () => {
+      document.querySelectorAll('.teacher-exam-student-choice').forEach(el => { el.checked = false; }); updateTeacherExamTargetSummary();
+    });
+    document.getElementById('teacherExamStudentOptions')?.addEventListener('change', updateTeacherExamTargetSummary);
+
   </script>
   <script src="navigation.js" defer></script>
 <script>
@@ -1646,4 +1831,3 @@
 </script>
   <script src="back-navigation.js" defer></script>
 </body>
-</html>

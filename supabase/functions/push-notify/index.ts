@@ -189,9 +189,14 @@ async function handleEvent(admin: SupabaseClient, body: Record<string, unknown>)
     if (!student) return 0;
     const name = student.student_name || "Your child";
     const status = record.status;
+    // RFID v2 rows carry source = 'rfid', the real scan time and an is_late flag.
+    const isRfid = String(record.source) === "rfid" || (record.source == null && record.marked_by == null);
+    const isLate = String(record.is_late) === "true";
     const message =
       status === "Present"
-        ? (record.marked_by == null ? `${name} arrived at school at ${timeInSchool(record.created_at)}.` : `${name} was marked present today.`)
+        ? (isRfid
+            ? `${name} arrived at school at ${timeInSchool(record.scanned_at || record.created_at)}${isLate ? " (late)" : ""}.`
+            : `${name} was marked present today.`)
         : status === "Absent"
           ? `${name} was marked absent today. Please contact the school if this is unexpected.`
           : `${name} was marked on leave today.`;

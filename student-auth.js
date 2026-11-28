@@ -1,6 +1,6 @@
 ﻿// NEXORA student authentication.
 // Student identity is established by a Supabase Auth session, never by localStorage alone.
-const NEXORA_STUDENT_EMAIL_SUFFIX = "@students.NEXORA.app";
+const NEXORA_STUDENT_EMAIL_SUFFIX = "@students.pulse.app";
 
 function NEXORAStudentEmail(code) {
   return String(code || "").trim().toLowerCase() + NEXORA_STUDENT_EMAIL_SUFFIX;
@@ -35,45 +35,64 @@ async function NEXORAStudentSignIn(event) {
   const button = document.getElementById("NEXORAStudentLoginButton");
   const code = codeInput.value.trim().toUpperCase();
   const password = passwordInput.value;
+
   if (!code || !password || !supabaseClient) {
-    errorBox.textContent = "Enter your student code and password.";
+    errorBox.textContent = !supabaseClient
+      ? "The secure login service is unavailable. Please try again later."
+      : "Enter your student code and password.";
     return;
   }
 
   button.disabled = true;
   button.textContent = "Signing in…";
   errorBox.textContent = "";
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email: NEXORAStudentEmail(code),
-    password
-  });
 
-  if (error || !data?.user) {
-    button.disabled = false;
-    button.textContent = "Sign in securely";
-    errorBox.textContent = "Sign-in failed. Check your code and password, or ask your teacher to reset them.";
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: NEXORAStudentEmail(code),
+      password
+    });
+
+    if (error || !data?.user) {
+      console.warn("NEXORA student authentication was rejected.", error?.status || "");
+      errorBox.textContent = error?.message?.toLowerCase().includes("fetch")
+        ? "Could not reach the secure login service. Check your internet connection and try again."
+        : "Sign-in failed. Check the student code and password, or ask your teacher to reset them.";
+      passwordInput.value = "";
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("students")
+      .select("id,student_name,class_name,student_code,study_hours,attendance_pct,teacher_request,areas_to_improve")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("NEXORA student profile verification failed.", profileError.code || profileError.message);
+      await supabaseClient.auth.signOut();
+      errorBox.textContent = "Your login was accepted, but your student profile could not be verified. Please contact your teacher.";
+      return;
+    }
+
+    if (!profile) {
+      await supabaseClient.auth.signOut();
+      errorBox.textContent = "This login is not linked to an active student record. Please contact your teacher.";
+      return;
+    }
+
+    if (typeof NEXORAResetSessionDeadline === "function") NEXORAResetSessionDeadline();
+    localStorage.setItem("auraway_student_code", profile.student_code);
+    localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
+    window.location.reload();
+  } catch (error) {
+    console.error("NEXORA student sign-in request failed.", error?.name || "UnknownError");
+    errorBox.textContent = "A connection error interrupted sign-in. Please check your internet and try again.";
     passwordInput.value = "";
-    return;
-  }
-
-  const { data: profile, error: profileError } = await supabaseClient
-    .from("students")
-    .select("id,student_name,class_name,student_code,study_hours,attendance_pct,teacher_request,areas_to_improve")
-    .eq("auth_user_id", data.user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    await supabaseClient.auth.signOut();
+  } finally {
     button.disabled = false;
     button.textContent = "Sign in securely";
-    errorBox.textContent = "This login is not linked to an active student record. Please contact your teacher.";
-    return;
   }
-
-  if (typeof NEXORAResetSessionDeadline === "function") NEXORAResetSessionDeadline();
-  localStorage.setItem("auraway_student_code", profile.student_code);
-  localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
-  window.location.reload();
 }
 
 async function NEXORAInitializeStudentAuth() {

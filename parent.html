@@ -12,6 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="push-notifications.js" defer></script>
+  <script src="attendance-utils.js"></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
     .standalone-wrap { max-width: 850px; margin: 0 auto; padding: 24px 16px; }
@@ -42,7 +43,7 @@
   <div class="standalone-wrap">
     <div class="header-bar" style="margin-bottom: 24px;">
       <div class="welcome-title" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-        <img class="nexora-app-logo" src="pwa-icon.png" width="48" height="48" alt="NEXORA-P" style="border-radius:10px;object-fit:cover;vertical-align:middle;">
+        <img class="nexora-app-logo" src="pwa-icon.svg" alt="NEXORA graduation cap and open book logo" width="48" height="48" style="border-radius:10px;object-fit:cover;vertical-align:middle;">
         <div>
           <h1>NEXORA-P — Parent Portal 👨‍👩‍👧</h1>
           <p>Track your child's studying, attendance, teacher requests, and improvement areas.</p>
@@ -66,7 +67,7 @@
         <h2 id="pStudentName">Student Name</h2>
         <p id="pStudentClass">Class &bull; Code</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-          <button class="btn" type="button" id="parentSwitchStudent">Switch student / sibling</button>
+          <button class="btn" type="button" id="parentSwitchStudent" onclick="showParentCodeEntry()" aria-controls="parentAccessCard">Switch child / sibling</button>
           <button class="btn" type="button" id="parentSignOut" style="background:transparent;border:1px solid var(--border-color);color:var(--text-primary);">Sign out</button>
         </div>
         <p id="parentSessionExpiry" style="font-size:.78rem;color:var(--text-secondary);margin:9px 0 0;">Access remembered for up to 7 days on this device.</p>
@@ -146,6 +147,10 @@
     function showParentCodeEntry() {
       document.getElementById('parentAccessCard').style.display = 'block';
       document.getElementById('parentReportCard').style.display = 'none';
+      const accessHeading = document.querySelector('#parentAccessCard h3');
+      const accessHint = document.querySelector('#parentAccessCard p');
+      if (accessHeading) accessHeading.textContent = '👨‍👩‍👧 Switch child / sibling';
+      if (accessHint) accessHint.textContent = 'Enter another child’s student code to switch their report on this device. Each child’s report is loaded separately.';
       const input = document.getElementById('parentCodeInput');
       input.value = '';
       input.focus();
@@ -167,22 +172,6 @@
       showParentCodeEntry();
       document.getElementById('parentSessionExpiry').textContent =
         'You have signed out. Enter a student code to continue.';
-    }
-
-    function attendanceTimeDetails(record) {
-      if (!record?.created_at) return '';
-      const instant = new Date(record.created_at);
-      if (Number.isNaN(instant.getTime())) return '';
-      const displayTime = instant.toLocaleTimeString('en-IN', {
-        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
-      });
-      if (record.marked_by == null && record.status === 'Present') {
-        const clock = new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-        }).format(instant);
-        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
-      }
-      return 'Recorded: ' + displayTime;
     }
 
     async function loadParentView(codeOverride) {
@@ -233,7 +222,7 @@
             status.style.fontWeight = '700';
             status.style.color = String(row.status).toLowerCase() === 'present' ? '#10b981' : String(row.status).toLowerCase() === 'absent' ? '#ef4444' : '#f59e0b';
             line.append(date, status);
-            const timingText = attendanceTimeDetails(row);
+            const timingText = NexoraAttendance.timeDetails(row);
             if (timingText) {
               const timing = document.createElement('small');
               timing.textContent = timingText;
@@ -312,6 +301,10 @@
 
         rememberParentStudent(code);
         mountParentPush(student.student_code || code);
+        const accessHeading = document.querySelector('#parentAccessCard h3');
+        const accessHint = document.querySelector('#parentAccessCard p');
+        if (accessHeading) accessHeading.textContent = '🔑 Enter Your Child\'s Student Code';
+        if (accessHint) accessHint.textContent = 'Enter your child\'s student code. To view another child or sibling, switch students here. This device remembers the selected student for up to 7 days.';
         document.getElementById('parentAccessCard').style.display = 'none';
         document.getElementById('parentReportCard').style.display = 'block';
       } catch (error) {
@@ -323,7 +316,6 @@
       }
     }
 
-    document.getElementById('parentSwitchStudent').addEventListener('click', showParentCodeEntry);
     document.getElementById('parentSignOut').addEventListener('click', parentSignOut);
 
     // Restore the last selected student only while the original fixed 7-day window is valid.
