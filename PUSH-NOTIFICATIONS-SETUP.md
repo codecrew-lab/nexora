@@ -39,8 +39,8 @@ folder is git-ignored, so **never commit it**.
 2. **Deploy the function.** Edge Functions → Deploy a new function:
    - Name it `push-notify`.
    - Paste in `supabase/functions/push-notify/index.ts`.
-   - Turn **Verify JWT off**. The function checks students, parents, the teacher
-     and the database trigger itself.
+   - Verify JWT can stay on or off. The website and the database trigger both
+     send the public app key, and the function checks who is calling itself.
 
 3. **Vault secret for the database trigger.** In the SQL Editor, run the line
    below. Use the same `PUSH_WEBHOOK_SECRET` value as in step 1:

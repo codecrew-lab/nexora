@@ -69,6 +69,10 @@ begin
     ),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
+      -- Public (publishable) key, same as supabase.js. It only gets the request past
+      -- the API gateway; the function itself checks x-nexora-push-secret.
+      'apikey', 'sb_publishable_sbS10vHYIrxhHsqnQNoWgA_WzREJj_-',
+      'Authorization', 'Bearer sb_publishable_sbS10vHYIrxhHsqnQNoWgA_WzREJj_-',
       'x-nexora-push-secret', webhook_secret
     ),
     timeout_milliseconds := 5000

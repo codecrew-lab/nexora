@@ -9,7 +9,8 @@
 //
 // Required secrets: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, PUSH_WEBHOOK_SECRET.
 // Optional: VAPID_SUBJECT (mailto: or https: contact URL).
-// Deploy with "Verify JWT" turned OFF — this function performs its own checks.
+// Works with "Verify JWT" on or off: callers send the publishable key, and this
+// function performs its own student / parent / teacher / trigger checks.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
