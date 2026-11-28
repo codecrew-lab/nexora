@@ -28,6 +28,7 @@ records in their portals.
 app/                    Android apps (Kotlin WebView). Web files are copied in at build time.
 hardware/
   nexora_rfid_reader/     ESP32 firmware. Start with its README
+  enclosure/              3D-printable box (OpenSCAD source + STL files)
 supabase/
   migrations/             Database schema changes, applied in filename order
   functions/              Edge functions

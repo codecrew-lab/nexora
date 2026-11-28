@@ -25,7 +25,7 @@ The OLED shows the student's name and the buzzer confirms the result.
 
 | RC522 | ESP32 |   | OLED | ESP32 |   | Buzzer | ESP32 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| SDA (SS) | GPIO 5 | | SDA | GPIO 21 | | + | GPIO 25 |
+| SDA (SS) | GPIO 5 | | SDA | GPIO 21 | | + | GPIO 4 |
 | SCK | GPIO 18 | | SCL | GPIO 15 | | − | GND |
 | MOSI | GPIO 23 | | VCC | 3.3 V | | | |
 | MISO | GPIO 19 | | GND | GND | | | |
@@ -67,6 +67,10 @@ device secret lets anyone mark attendance.
 | `RFID READER ERROR` | falling tones at boot | The ESP32 can't talk to the RC522. Check the wiring |
 
 `Q5` in the top bar means 5 taps are waiting to sync.
+
+## Enclosure
+
+A printable box for these parts is in [`../enclosure`](../enclosure): base and lid STLs, plus the OpenSCAD source.
 
 ## Registering cards
 
