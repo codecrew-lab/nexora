@@ -45,4 +45,4 @@
 #define OLED_ADDRESS   0x3C
 
 // Passive buzzer (optional)
-#define BUZZER_PIN     25
+#define BUZZER_PIN     4
