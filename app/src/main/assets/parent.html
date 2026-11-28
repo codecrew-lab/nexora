@@ -11,6 +11,7 @@
   <script src="portal-switcher.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
+  <script src="push-notifications.js" defer></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
     .standalone-wrap { max-width: 850px; margin: 0 auto; padding: 24px 16px; }
@@ -71,6 +72,11 @@
         <p id="parentSessionExpiry" style="font-size:.78rem;color:var(--text-secondary);margin:9px 0 0;">Access remembered for up to 7 days on this device.</p>
       </section>
 
+
+      <div class="card" id="parentPushCard" style="margin-bottom:16px;">
+        <div class="parent-section-heading"><div><h3>🔔 Notifications</h3><p>Instant alerts on this phone for this child</p></div></div>
+        <div id="parentPushControls" style="margin-top:10px;"></div>
+      </div>
       <div class="parent-metric-grid" aria-label="Progress summary">
         <article class="parent-metric"><small>📅 Attendance</small><strong id="pAttendance">—</strong></article>
         <article class="parent-metric"><small>📖 Study activity</small><strong id="pStudyHours">—</strong></article>
@@ -146,7 +152,17 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    let parentPushCode = null;
+    function mountParentPush(code) {
+      parentPushCode = code;
+      const run = () => window.NEXORAPush && NEXORAPush.mount(document.getElementById("parentPushControls"), () => parentPushCode ? { role: "parent", code: parentPushCode } : null);
+      if (window.NEXORAPush) run(); else document.addEventListener("DOMContentLoaded", run, { once: true });
+    }
+
     function parentSignOut() {
+      // Signing out also stops notifications for this child on this device.
+      if (parentPushCode && window.NEXORAPush) NEXORAPush.disable("parent", parentPushCode).catch(() => {});
+      parentPushCode = null;
       try { localStorage.removeItem(PARENT_SESSION_KEY); } catch (_) {}
       showParentCodeEntry();
       document.getElementById('parentSessionExpiry').textContent =
@@ -295,6 +311,7 @@
         }
 
         rememberParentStudent(code);
+        mountParentPush(student.student_code || code);
         document.getElementById('parentAccessCard').style.display = 'none';
         document.getElementById('parentReportCard').style.display = 'block';
       } catch (error) {
