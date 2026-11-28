@@ -11,6 +11,7 @@
   <script src="portal-switcher.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
+  <script src="attendance-utils.js"></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
     .standalone-wrap { max-width: 850px; margin: 0 auto; padding: 24px 16px; }
@@ -157,22 +158,6 @@
         'You have signed out. Enter a student code to continue.';
     }
 
-    function attendanceTimeDetails(record) {
-      if (!record?.created_at) return '';
-      const instant = new Date(record.created_at);
-      if (Number.isNaN(instant.getTime())) return '';
-      const displayTime = instant.toLocaleTimeString('en-IN', {
-        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
-      });
-      if (record.marked_by == null && record.status === 'Present') {
-        const clock = new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-        }).format(instant);
-        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
-      }
-      return 'Recorded: ' + displayTime;
-    }
-
     async function loadParentView(codeOverride) {
       const input = document.getElementById('parentCodeInput');
       const code = String(codeOverride || input.value).trim().toUpperCase();
@@ -221,7 +206,7 @@
             status.style.fontWeight = '700';
             status.style.color = String(row.status).toLowerCase() === 'present' ? '#10b981' : String(row.status).toLowerCase() === 'absent' ? '#ef4444' : '#f59e0b';
             line.append(date, status);
-            const timingText = attendanceTimeDetails(row);
+            const timingText = NexoraAttendance.timeDetails(row);
             if (timingText) {
               const timing = document.createElement('small');
               timing.textContent = timingText;

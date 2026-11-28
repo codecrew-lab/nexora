@@ -1,9 +1,13 @@
 // NEXORA PWA registration and update handling.
 (function () {
-  if ('serviceWorker' in navigator) {
+  // The Android apps load these files from the APK (file:///android_asset), where
+  // service workers are unsupported and would only cache stale copies anyway.
+  const insideAndroidApp = window.location.protocol === 'file:';
+
+  if ('serviceWorker' in navigator && !insideAndroidApp) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('./sw.js?v=29', {
+        const registration = await navigator.serviceWorker.register('./sw.js?v=33', {
           updateViaCache: 'none'
         });
 

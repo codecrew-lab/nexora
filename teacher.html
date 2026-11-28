@@ -11,6 +11,8 @@
   <script src="portal-switcher.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
+  <script src="attendance-utils.js"></script>
+  <script src="teacher-rfid.js"></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
     .standalone-wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
@@ -55,6 +57,23 @@
 
     @media(max-width:600px){.teacher-overview-grid{grid-template-columns:1fr 1fr}.teacher-overview-card:last-child{grid-column:1/-1}.teacher-roster-tools{grid-template-columns:1fr}.teacher-roster-count{white-space:normal}}
 
+
+    /* RFID attendance panel (teacher-rfid.js) and attendance register */
+    .rfid-muted{color:var(--text-secondary);font-size:.85rem}
+    .rfid-block{display:block;margin-top:3px}
+    .rfid-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;margin:14px 0}
+    .rfid-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--bg-primary);margin-bottom:8px}
+    .rfid-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:.72rem;font-weight:700;white-space:nowrap}
+    .rfid-badge-green{background:rgba(16,185,129,.15);color:#10b981}
+    .rfid-badge-red{background:rgba(239,68,68,.15);color:#ef4444}
+    .rfid-badge-amber{background:rgba(245,158,11,.15);color:#f59e0b}
+    .rfid-badge-grey{background:rgba(148,163,184,.15);color:var(--text-secondary)}
+    .rfid-uid{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}
+    .rfid-big{font-size:1.6rem}
+    .rfid-inactive{opacity:.6}
+    .rfid-section-title{margin:18px 0 8px}
+    .rfid-feed{max-height:420px;overflow:auto}
+    .attendance-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);background:rgba(99,102,241,.08);font-size:.88rem}
   </style>
 </head>
 <body class="NEXORA-Teacher-portal">
@@ -87,6 +106,7 @@
           <li><a href="#teacherStudentsSection">👥 <span>Students</span></a></li>
           <li><a href="#teacherTimetableManager">🗓️ <span>Timetable</span></a></li>
           <li><a href="#teacherAttendanceManager">📋 <span>Attendance</span></a></li>
+          <li><a href="#teacherRfidSection">📡 <span>RFID Attendance</span></a></li>
           <li><a href="#teacherMarksSection">📝 <span>Marks</span></a></li>
           <li><a href="#teacherAssignmentsSection" id="teacherAssignmentsNav">📚 <span>Assignments</span></a></li>
           <li><a href="#teacherAssignmentStatusPage" id="teacherAssignmentStatusNav">📊 <span>Assignment Completion Status</span></a></li>
@@ -300,7 +320,7 @@
     <!-- Teacher Attendance Manager -->
     <div class="card" style="margin-bottom:20px;" id="teacherAttendanceManager">
       <h3>📋 Class Attendance Manager</h3>
-      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date to mark attendance. Existing records have an individual delete control; deleting one record never deletes a student's profile or other attendance.</p>
+      <p style="color:var(--text-secondary);font-size:.88rem;margin:6px 0 12px;">Choose a class and date. Students who tapped their RFID card are already marked; set the rest and save. Only changed rows are saved. Deleting one record never deletes a student's profile or other attendance.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">
         <select id="attendanceClassSelect" class="input-field"><option value="">Select class</option></select>
         <input id="attendanceDateInput" class="input-field" type="date">
@@ -310,6 +330,54 @@
       <button type="button" class="btn" id="saveClassAttendance" style="margin-top:12px;display:none;background:#059669;">Save Class Attendance</button>
       <p id="attendanceSaveMessage" role="status" style="margin-top:10px;"></p>
     </div>
+
+    <!-- RFID Attendance (logic in teacher-rfid.js) -->
+    <section class="card" style="margin-bottom:20px;" id="teacherRfidSection" aria-labelledby="teacherRfidHeading">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h3 id="teacherRfidHeading">📡 RFID Attendance</h3>
+          <p class="rfid-muted" style="margin-top:6px;">Students tap their card at the classroom reader and are marked Present automatically. Assign new cards, follow today's taps and check that readers are online.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <small class="rfid-muted" id="rfidUpdatedAt"></small>
+          <button type="button" class="btn" id="rfidRefresh" style="padding:7px 12px;">Refresh</button>
+        </div>
+      </div>
+      <p id="rfidMessage" role="status" class="rfid-muted" style="margin-top:8px;"></p>
+
+      <div class="rfid-grid">
+        <div class="stat-box">
+          <h4>Today</h4>
+          <div id="rfidTodaySummary" style="margin-top:8px;"><span class="rfid-muted">Loading…</span></div>
+          <form id="rfidLateForm" style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <label for="rfidLateAfter" class="rfid-muted">Late after</label>
+            <input id="rfidLateAfter" class="input-field" type="time" style="max-width:130px;" required>
+            <button type="submit" class="btn" style="padding:7px 12px;">Save</button>
+          </form>
+        </div>
+        <div class="stat-box">
+          <h4>Readers</h4>
+          <div id="rfidReaders" style="margin-top:8px;"><span class="rfid-muted">Loading…</span></div>
+        </div>
+      </div>
+
+      <h4 class="rfid-section-title">Unknown cards</h4>
+      <div id="rfidUnknownCards"><span class="rfid-muted">Loading…</span></div>
+
+      <h4 class="rfid-section-title">Today's taps</h4>
+      <div id="rfidScanFeed" class="rfid-feed"><span class="rfid-muted">Loading…</span></div>
+
+      <details style="margin-top:16px;">
+        <summary style="cursor:pointer;font-weight:700;">Registered cards (<span id="rfidCardCount">0</span> active)</summary>
+        <form id="rfidRegisterForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0;">
+          <select id="rfidRegisterStudent" class="input-field" required><option value="">Choose student</option></select>
+          <input id="rfidRegisterUid" class="input-field rfid-uid" placeholder="Card UID, e.g. 39C38E02" autocomplete="off" autocapitalize="characters" required>
+          <button type="submit" class="btn" id="rfidRegisterButton">Register card</button>
+        </form>
+        <input id="rfidCardSearch" class="input-field" type="search" placeholder="Search by student or UID" style="margin-bottom:10px;">
+        <div id="rfidCardList"></div>
+      </details>
+    </section>
 
 
     <section id="teacherAnalyticsSection" class="card" style="margin:0 0 20px;" aria-labelledby="teacherAnalyticsHeading">
@@ -530,6 +598,7 @@
       populateTeacherMarkStudents();
       updateTeacherOverview();
       populateTeacherRosterFilter();
+      window.NexoraRfidAdmin?.studentsChanged(allStudents);
       if (allStudents.length === 0) {
         container.innerHTML = '<p style="color:var(--text-secondary);">No students added yet.</p>';
         return;
@@ -753,23 +822,7 @@
       if ([...select.options].some(option => option.value === currentValue)) select.value = currentValue;
     }
 
-    function attendanceTimeDetails(record) {
-      if (!record?.created_at) return '';
-      const instant = new Date(record.created_at);
-      if (Number.isNaN(instant.getTime())) return '';
-      const displayTime = instant.toLocaleTimeString('en-IN', {
-        timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true
-      });
-      if (record.marked_by == null && record.status === 'Present') {
-        const clock = new Intl.DateTimeFormat('en-GB', {
-          timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-        }).format(instant);
-        return 'RFID entry: ' + displayTime + (clock >= '09:31' ? ' · Late' : ' · On time');
-      }
-      return 'Recorded: ' + displayTime;
-    }
-
-    async function loadAttendanceRoster() {
+    async function loadAttendanceRoster(statusMessage) {
       const className = document.getElementById('attendanceClassSelect').value;
       const date = document.getElementById('attendanceDateInput').value;
       const roster = document.getElementById('teacherAttendanceRoster');
@@ -788,17 +841,25 @@
         return;
       }
       const codes = students.map(student => student.student_code);
+      // select('*') works both before and after the RFID v2 migration adds columns.
       const { data: records, error } = await supabaseClient.from('attendance_records')
-        .select('id,student_code,status,created_at,marked_by').eq('attendance_date', date).in('student_code', codes);
+        .select('*').eq('attendance_date', date).in('student_code', codes);
       if (error) {
         roster.textContent = 'Could not load attendance. ' + error.message;
         saveButton.style.display = 'none';
         return;
       }
       const existing = new Map((records || []).map(record => [record.student_code, record]));
+      const counts = { rfid: 0, teacher: 0, unmarked: 0, late: 0 };
       roster.innerHTML = '';
+      const rows = document.createDocumentFragment();
       students.forEach(student => {
         const record = existing.get(student.student_code);
+        if (!record) counts.unmarked++;
+        else if (NexoraAttendance.isRfid(record)) counts.rfid++;
+        else counts.teacher++;
+        if (NexoraAttendance.isLate(record)) counts.late++;
+
         const row = document.createElement('div');
         row.className = 'student-row';
         const info = document.createElement('div');
@@ -810,21 +871,29 @@
         info.append(name, document.createElement('br'), code);
         const timing = document.createElement('small');
         timing.style.cssText = 'display:block;margin-top:5px;color:var(--text-secondary);font-size:.78rem;';
-        timing.textContent = attendanceTimeDetails(record);
-        if (timing.textContent) info.appendChild(timing);
+        timing.textContent = record ? NexoraAttendance.timeDetails(record) : 'Not marked yet';
+        info.appendChild(timing);
         const actions = document.createElement('div');
         actions.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
         const select = document.createElement('select');
         select.className = 'input-field attendance-status-select';
         select.dataset.studentCode = student.student_code;
+        select.dataset.original = record?.status || '';
         select.style.maxWidth = '180px';
+        if (!record) {
+          const blank = document.createElement('option');
+          blank.value = '';
+          blank.textContent = '— Not marked —';
+          select.appendChild(blank);
+        }
         ['Present','Absent','Leave'].forEach(status => {
           const option = document.createElement('option');
           option.value = status;
           option.textContent = status === 'Present' ? 'Present ✅' : status === 'Absent' ? 'Absent ❌' : 'Leave 📝';
           select.appendChild(option);
         });
-        select.value = record?.status || 'Present';
+        select.value = record?.status || '';
+        select.addEventListener('change', updateAttendanceSaveState);
         actions.appendChild(select);
 
         if (record?.id) {
@@ -843,22 +912,62 @@
           actions.appendChild(deleteButton);
         }
         row.append(info, actions);
-        roster.appendChild(row);
+        rows.appendChild(row);
       });
+
+      const summary = document.createElement('div');
+      summary.className = 'attendance-summary';
+      const summaryText = document.createElement('span');
+      summaryText.textContent = '📡 ' + counts.rfid + ' tapped in' + (counts.late ? ' (' + counts.late + ' late)' : '') +
+        ' · ✍️ ' + counts.teacher + ' marked by teacher · ⏳ ' + counts.unmarked + ' not marked';
+      summary.appendChild(summaryText);
+      if (counts.unmarked) {
+        const bulk = document.createElement('span');
+        bulk.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+        [['Absent', 'Mark rest Absent', '#b45309'], ['Present', 'Mark rest Present', '#059669']].forEach(([status, label, colour]) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn';
+          button.textContent = label;
+          button.style.cssText = 'padding:6px 10px;font-size:.8rem;background:' + colour + ';';
+          button.addEventListener('click', () => markUnmarkedAttendance(status));
+          bulk.appendChild(button);
+        });
+        summary.appendChild(bulk);
+      }
+      roster.append(summary, rows);
       saveButton.style.display = 'inline-flex';
+      updateAttendanceSaveState();
+      if (statusMessage) {
+        message.style.color = '#10b981';
+        message.textContent = statusMessage;
+      }
+    }
+
+    function changedAttendanceSelects() {
+      return [...document.querySelectorAll('.attendance-status-select')]
+        .filter(select => select.value && select.value !== select.dataset.original);
+    }
+
+    function updateAttendanceSaveState() {
+      const button = document.getElementById('saveClassAttendance');
+      const changed = changedAttendanceSelects().length;
+      button.disabled = changed === 0;
+      button.textContent = changed ? 'Save ' + changed + (changed === 1 ? ' change' : ' changes') : 'No changes to save';
+    }
+
+    function markUnmarkedAttendance(status) {
+      document.querySelectorAll('.attendance-status-select').forEach(select => {
+        if (!select.dataset.original && !select.value) select.value = status;
+      });
+      updateAttendanceSaveState();
     }
 
     async function deleteAttendanceRecord(recordId, studentName, studentCode, attendanceDate, button) {
       const confirmed = window.confirm(
-        'Delete only this attendance record?
-
-Student: ' + studentName +
-        '
-Code: ' + studentCode + '
-Date: ' + attendanceDate +
-        '
-
-The student profile and all other dates will remain unchanged.'
+        'Delete only this attendance record?\n\nStudent: ' + studentName +
+        '\nCode: ' + studentCode + '\nDate: ' + attendanceDate +
+        '\n\nThe student profile and all other dates will remain unchanged.'
       );
       if (!confirmed) return;
 
@@ -881,41 +990,37 @@ The student profile and all other dates will remain unchanged.'
         return;
       }
 
-      message.style.color = '#10b981';
-      message.textContent = 'One attendance record deleted. Student profile and other dates were not changed.';
-      await loadAttendanceRoster();
+      await loadAttendanceRoster('One attendance record deleted. Student profile and other dates were not changed.');
     }
 
     async function saveClassAttendance() {
-      const selects = [...document.querySelectorAll('.attendance-status-select')];
       const date = document.getElementById('attendanceDateInput').value;
       const message = document.getElementById('attendanceSaveMessage');
-      if (!selects.length || !date) return;
+      const changed = changedAttendanceSelects();
+      if (!changed.length || !date) return;
       const button = document.getElementById('saveClassAttendance');
       button.disabled = true;
       button.textContent = 'Saving…';
-      const records = selects.map(select => ({
+      // Only changed rows are sent, so RFID tap records that were not touched keep their tap time.
+      const records = changed.map(select => ({
         student_code: select.dataset.studentCode,
         attendance_date: date,
         status: select.value
       }));
       const { error } = await supabaseClient.from('attendance_records')
         .upsert(records, { onConflict: 'student_code,attendance_date' });
-      button.disabled = false;
-      button.textContent = 'Save Class Attendance';
       if (error) {
+        updateAttendanceSaveState();
         message.style.color = '#ef4444';
         message.textContent = 'Save failed: ' + error.message + '. Check the Supabase SQL setup and teacher login.';
         return;
       }
-      message.style.color = '#10b981';
-      message.textContent = 'Attendance saved for ' + records.length + ' students.';
-      await loadAttendanceRoster();
+      await loadAttendanceRoster('Saved ' + records.length + (records.length === 1 ? ' change.' : ' changes.'));
       loadStudentsRoster();
     }
 
-    document.getElementById('attendanceDateInput').valueAsDate = new Date();
-    document.getElementById('loadAttendanceClass').addEventListener('click', loadAttendanceRoster);
+    document.getElementById('attendanceDateInput').value = NexoraAttendance.todayIso();
+    document.getElementById('loadAttendanceClass').addEventListener('click', () => loadAttendanceRoster());
     document.getElementById('saveClassAttendance').addEventListener('click', saveClassAttendance);
 
         async function loadAssignmentOverview() {

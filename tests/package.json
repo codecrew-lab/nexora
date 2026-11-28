@@ -1,0 +1,16 @@
+{
+  "name": "nexora-tests",
+  "private": true,
+  "type": "module",
+  "description": "Database and RFID endpoint tests for NEXORA",
+  "scripts": {
+    "test": "npm run test:db && npm run test:ui && npm run test:e2e",
+    "test:db": "node rfid-database.test.mjs",
+    "test:ui": "node teacher-ui.test.mjs",
+    "test:e2e": "node rfid-endpoint.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.2.17",
+    "jsdom": "25.0.1"
+  }
+}
