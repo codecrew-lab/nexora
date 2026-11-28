@@ -70,8 +70,18 @@ export function createApp({ db, config, log = console }) {
   const parentLimiter = createLimiter(8);
   const functionCache = new Map();
 
+  // Behind a reverse proxy the caller's address is the LAST X-Forwarded-For
+  // entry: the proxy appends it, and anything before it was supplied by the
+  // caller and can be forged to dodge the rate limits. Some proxies (Azure App
+  // Service) add the port, which must not make every request look new.
   const clientIp = req => {
-    const forwarded = config.trustProxy ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '';
+    let forwarded = '';
+    if (config.trustProxy) {
+      const entries = String(req.headers['x-forwarded-for'] || '').split(',').map(entry => entry.trim()).filter(Boolean);
+      forwarded = (entries[entries.length - 1] || '')
+        .replace(/^\[([^\]]+)\](?::\d+)?$/, '$1')        // [2001:db8::1]:443
+        .replace(/^(\d+\.\d+\.\d+\.\d+):\d+$/, '$1');   // 203.0.113.5:443
+    }
     return forwarded || req.socket?.remoteAddress || 'unknown';
   };
 

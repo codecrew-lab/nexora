@@ -396,6 +396,16 @@ try {
   check('teacher code guessing is rate limited', r.error?.status === 429, r);
   raw = await fetch(`${server.url}/healthz`);
   check('health check', raw.status === 200);
+  // Behind a proxy: the caller's address is the last X-Forwarded-For entry, with any port removed.
+  const proxied = await startServer(db, { trustProxy: true });
+  const guess = (forwardedFor, code) => fetch(`${proxied.url}/api/auth/teacher-login`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': forwardedFor },
+    body: JSON.stringify({ login_code: 'LOGIN-CODE', access_code: code }),
+  }).then(res => res.status);
+  for (let i = 0; i < 5; i++) await guess(`10.9.9.${i}, 203.0.113.7:${40000 + i}`, 'guess');
+  check('forged forwarding entries and changing ports do not dodge the rate limit', await guess('1.2.3.4, 203.0.113.7:51234', 'ACCESS-CODE') === 429);
+  check('another real address is not affected', await guess('203.0.113.7, 198.51.100.20:443', 'ACCESS-CODE') === 200);
+  await proxied.close();
   const offline = openPortal('index.html');
   offline.window.fetch = () => Promise.reject(new TypeError('network down'));
   r = await offline.client.auth.signInWithPassword({ email: 'a@b.c', password: 'x' });
