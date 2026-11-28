@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXORA — Attendance Management</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="attendance-utils.js"></script>
   <script src="student-auth.js"></script>
   <style>
@@ -167,13 +166,13 @@
 
     async function loadTeacherAttendance() {
       const code = window.NEXORA_CURRENT_STUDENT?.student_code;
-      if (!code || !supabaseClient) {
+      if (!code || !nexoraClient) {
         attHistoryList.textContent = 'Please sign in with your student code to view attendance.';
         renderAttendance([]);
         return;
       }
       attHistoryList.textContent = 'Loading teacher attendance…';
-      const { data, error } = await supabaseClient.from('attendance_records').select('*').eq('student_code', code).order('attendance_date', { ascending: false }).limit(365);
+      const { data, error } = await nexoraClient.from('attendance_records').select('*').eq('student_code', code).order('attendance_date', { ascending: false }).limit(365);
       if (error) {
         attHistoryList.textContent = 'Could not load attendance. Your school administrator may need to run the attendance SQL setup.';
         console.error('Attendance lookup failed:', error);

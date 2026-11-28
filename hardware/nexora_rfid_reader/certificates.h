@@ -1,13 +1,16 @@
-// Root certificates the reader trusts for HTTPS to Supabase.
+// Root certificates the reader trusts for HTTPS to the NEXORA server.
 //
-// Supabase currently chains to Google Trust Services "GTS Root R4". GTS Root R1
-// and Let's Encrypt "ISRG Root X1" are included too, so the reader keeps working
-// if Supabase rotates to another common CA. TLS verification stays on; never
-// replace this with setInsecure().
+// The server runs on Azure App Service (nexora-api.azurewebsites.net), whose
+// certificate chains to "DigiCert Global Root G2". Let's Encrypt "ISRG Root X1"
+// and Google Trust Services "GTS Root R1" / "GTS Root R4" are included too, so
+// the reader keeps working if the server moves to a host that uses one of
+// those. TLS verification stays on; never replace this with setInsecure().
 //
-// Order: GTS Root R1, GTS Root R4, ISRG Root X1. Source: macOS system root store. Expiry: GTS R1/R4 2036-06-22, ISRG X1 2035-06-04.
-// Check with:
-//   openssl s_client -connect iazlemocpuhzwtrkyfgw.supabase.co:443 -showcerts
+// Order: GTS Root R1, GTS Root R4, ISRG Root X1, DigiCert Global Root G2.
+// Source: macOS system root store. Expiry: GTS R1/R4 2036-06-22, ISRG X1
+// 2035-06-04, DigiCert Global Root G2 2038-01-15.
+// Check which root the server uses with:
+//   openssl s_client -connect nexora-api.azurewebsites.net:443 -showcerts
 #pragma once
 
 static const char ROOT_CA_BUNDLE[] = R"PEM(
@@ -85,5 +88,27 @@ oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq
 4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA
 mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d
 emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH
+MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT
+MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j
+b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG
+9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI
+2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx
+1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ
+q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz
+tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ
+vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP
+BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV
+5uNu5g/6+rkS7QYXjzkwDQYJKoZIhvcNAQELBQADggEBAGBnKJRvDkhj6zHd6mcY
+1Yl9PMWLSn/pvtsrF9+wX3N3KjITOYFnQoQj8kVnNeyIv/iPsGEMNKSuIEyExtv4
+NeF22d+mQrvHRAiGfzZ0JFrabA0UWTW98kndth/Jsw1HKj2ZL7tcu7XUIOGZX1NG
+Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91
+8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe
+pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl
+MrY=
 -----END CERTIFICATE-----
 )PEM";

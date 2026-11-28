@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXORA — Examination Centre & Revision</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="student-auth.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -291,16 +290,16 @@
   <script src="back-navigation.js" defer>
     async function loadNexoraTeacherAssignedExams() {
       const list = document.getElementById('teacherAssignedExamsList');
-      if (!list || typeof supabaseClient === 'undefined' || !supabaseClient) return;
+      if (!list || typeof nexoraClient === 'undefined' || !nexoraClient) return;
       const student = window.NEXORA_CURRENT_STUDENT;
       if (!student?.id) { list.textContent = 'Sign in to your Student Portal to view exams assigned to you.'; return; }
       list.textContent = 'Loading your exams…';
-      const { data: targets, error: targetError } = await supabaseClient.from('nexora_exam_targets')
+      const { data: targets, error: targetError } = await nexoraClient.from('nexora_exam_targets')
         .select('exam_id').eq('student_id', student.id);
       if (targetError) { list.textContent = 'Could not load assigned exams. Please refresh or contact your teacher.'; console.warn('Assigned exam targets could not be loaded:', targetError.code || ''); return; }
       const ids = [...new Set((targets || []).map(row => row.exam_id).filter(Boolean))];
       if (!ids.length) { list.textContent = 'No exams have been assigned to you yet.'; return; }
-      const { data: exams, error } = await supabaseClient.from('nexora_exams')
+      const { data: exams, error } = await nexoraClient.from('nexora_exams')
         .select('id,title,subject,instructions,starts_at,duration_minutes').in('id', ids)
         .eq('status', 'published').order('starts_at', {ascending:true});
       if (error) { list.textContent = 'Could not load your exams. Please refresh and try again.'; console.warn('Assigned exams could not be loaded:', error.code || ''); return; }

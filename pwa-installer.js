@@ -7,7 +7,7 @@
   if ('serviceWorker' in navigator && !insideAndroidApp) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('./sw.js?v=33', {
+        const registration = await navigator.serviceWorker.register('./sw.js?v=37', {
           updateViaCache: 'none'
         });
 

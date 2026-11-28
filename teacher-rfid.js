@@ -4,6 +4,9 @@
 // students, deactivate lost cards, and set the late cut-off. Requires the
 // 20261127120000_rfid_attendance_v2.sql migration.
 //
+// After every successful load it fires a 'nexora:rfid-updated' event on window,
+// which the add-user form and the roster's card badges (teacher-enroll.js) use.
+//
 // teacher.html calls NexoraRfidAdmin.studentsChanged(allStudents) whenever the
 // roster loads; the panel starts itself on the first call.
 (function () {
@@ -14,6 +17,7 @@
   let students = [];
   let studentsById = new Map();
   let cards = [];
+  let unknownEntries = [];
   let pollTimer = null;
   let loading = false;
 
@@ -88,13 +92,13 @@
     const today = NexoraAttendance.todayIso();
     const since = new Date(Date.now() - UNKNOWN_LOOKBACK_DAYS * 86400000).toISOString();
     const [cardsResult, readersResult, scansResult, unknownResult, settingsResult] = await Promise.all([
-      supabaseClient.from('student_rfid_cards').select('id,student_id,card_uid,active,created_at').order('created_at', { ascending: false }),
-      supabaseClient.from('rfid_devices').select('*').order('last_seen_at', { ascending: false }),
-      supabaseClient.from('rfid_scan_events').select('id,card_uid,device_id,student_id,result,scanned_at,is_late')
+      nexoraClient.from('student_rfid_cards').select('id,student_id,card_uid,active,created_at').order('created_at', { ascending: false }),
+      nexoraClient.from('rfid_devices').select('*').order('last_seen_at', { ascending: false }),
+      nexoraClient.from('rfid_scan_events').select('id,card_uid,device_id,student_id,result,scanned_at,is_late')
         .eq('attendance_date', today).order('scanned_at', { ascending: false }).limit(500),
-      supabaseClient.from('rfid_scan_events').select('card_uid,device_id,scanned_at')
+      nexoraClient.from('rfid_scan_events').select('card_uid,device_id,scanned_at')
         .eq('result', 'unregistered_card').gte('received_at', since).order('received_at', { ascending: false }).limit(300),
-      supabaseClient.from('attendance_settings').select('late_after').maybeSingle()
+      nexoraClient.from('attendance_settings').select('late_after').maybeSingle()
     ]);
     const error = cardsResult.error || readersResult.error || scansResult.error || unknownResult.error || settingsResult.error;
     if (error) throw error;
@@ -109,7 +113,7 @@
 
   // Returns true when everything loaded.
   async function refresh() {
-    if (loading || !$('teacherRfidSection') || typeof supabaseClient === 'undefined' || !supabaseClient) return false;
+    if (loading || !$('teacherRfidSection') || typeof nexoraClient === 'undefined' || !nexoraClient) return false;
     loading = true;
     try {
       const data = await fetchAll();
@@ -122,11 +126,12 @@
       const lateInput = $('rfidLateAfter');
       if (data.lateAfter && document.activeElement !== lateInput) lateInput.value = data.lateAfter.slice(0, 5);
       $('rfidUpdatedAt').textContent = 'Updated ' + NexoraAttendance.formatTime(new Date());
+      window.dispatchEvent(new CustomEvent('nexora:rfid-updated'));
       return true;
     } catch (error) {
       console.error('RFID panel failed to load:', error);
       setMessage(isMissingSetup(error)
-        ? 'RFID tables are not set up yet. Run supabase/migrations/20261127120000_rfid_attendance_v2.sql in the Supabase SQL Editor.'
+        ? 'RFID tables are not set up yet. Apply db/migrations/20261127120000_rfid_attendance_v2.sql to the database (cd server && npm run db:migrate).'
         : 'Could not load RFID data: ' + (error.message || 'unknown error'), 'error');
       stopPolling();
       return false;
@@ -208,6 +213,7 @@
       byUid.set(event.card_uid, entry);
     }
 
+    unknownEntries = [...byUid.values()];
     const box = $('rfidUnknownCards');
     box.replaceChildren();
     if (!byUid.size) {
@@ -288,13 +294,13 @@
     try {
       // Only one active card per student: retire the old one first.
       if (currentCard) {
-        const { error } = await supabaseClient.from('student_rfid_cards').update({ active: false }).eq('id', currentCard.id);
+        const { error } = await nexoraClient.from('student_rfid_cards').update({ active: false }).eq('id', currentCard.id);
         if (error) throw error;
       }
       const { error } = existingForUid
         // UIDs are unique across all rows, so a previously used card is re-pointed instead of inserted.
-        ? await supabaseClient.from('student_rfid_cards').update({ student_id: studentId, active: true }).eq('id', existingForUid.id)
-        : await supabaseClient.from('student_rfid_cards').insert({ student_id: studentId, card_uid: uid, created_by: window.NEXORA_TEACHER_USER_ID || null });
+        ? await nexoraClient.from('student_rfid_cards').update({ student_id: studentId, active: true }).eq('id', existingForUid.id)
+        : await nexoraClient.from('student_rfid_cards').insert({ student_id: studentId, card_uid: uid, created_by: window.NEXORA_TEACHER_USER_ID || null });
       if (error) throw error;
       setMessage('Card ' + uid + ' assigned to ' + studentLabel(student) + '. They can tap now.', 'success');
       const uidInput = $('rfidRegisterUid');
@@ -314,7 +320,7 @@
       return setMessage(studentLabel(student) + ' already has an active card. Deactivate it first.', 'error');
     }
     button.disabled = true;
-    const { error } = await supabaseClient.from('student_rfid_cards').update({ active }).eq('id', card.id);
+    const { error } = await nexoraClient.from('student_rfid_cards').update({ active }).eq('id', card.id);
     button.disabled = false;
     if (error) return setMessage('Could not update the card: ' + error.message, 'error');
     setMessage('Card ' + card.card_uid + (active ? ' reactivated.' : ' deactivated.'), 'success');
@@ -325,7 +331,7 @@
     event.preventDefault();
     const value = $('rfidLateAfter').value;
     if (!/^\d{2}:\d{2}$/.test(value)) return setMessage('Enter a time such as 09:30.', 'error');
-    const { data, error } = await supabaseClient.from('attendance_settings')
+    const { data, error } = await nexoraClient.from('attendance_settings')
       .update({ late_after: value, updated_at: new Date().toISOString(), updated_by: window.NEXORA_TEACHER_USER_ID || null })
       .eq('id', true).select('late_after');
     if (error || !data?.length) return setMessage('Could not save the late cut-off. ' + (error?.message || 'Check teacher permissions.'), 'error');
@@ -343,6 +349,28 @@
   function stopPolling() {
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null;
+  }
+
+  // Opens the card form for one student, from the roster's "Map card" button.
+  function startAssign(studentId) {
+    const student = studentsById.get(Number(studentId));
+    const form = $('rfidRegisterForm');
+    if (!student || !form) return;
+    const details = form.closest('details');
+    if (details) details.open = true;
+    studentOptions($('rfidRegisterStudent'), 'Choose student');
+    $('rfidRegisterStudent').value = String(student.id);
+    // Only suggest a card tapped in the last ten minutes: an older tap is probably someone else's.
+    const newest = unknownEntries[0];
+    const latest = newest && Date.now() - new Date(newest.last).getTime() < 10 * 60 * 1000 ? newest : null;
+    const uidInput = $('rfidRegisterUid');
+    // The most recent unassigned tap is almost always the card being handed over.
+    if (latest && !uidInput.value) uidInput.value = latest.uid;
+    setMessage(latest
+      ? 'Mapping a card to ' + studentLabel(student) + '. ' + latest.uid + ' was tapped ' + relativeTime(latest.last) + '. Press Register card, or type another UID.'
+      : 'Mapping a card to ' + studentLabel(student) + '. Tap the card on a reader and press Refresh, or type its UID, then press Register card.');
+    if (typeof form.scrollIntoView === 'function') form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    uidInput.focus();
   }
 
   let wired = false;
@@ -371,6 +399,11 @@
       wireEvents();
       refresh().then(ok => { if (ok && !pollTimer) startPolling(); });
     },
-    refresh
+    refresh,
+    startAssign,
+    // Cards tapped on a reader that belong to nobody yet, newest first.
+    unknownCards: () => unknownEntries.map(entry => ({ ...entry })),
+    // The student's active card, or null.
+    cardFor: studentId => cards.find(card => card.active && card.student_id === studentId) || null
   });
 })();

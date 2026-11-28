@@ -19,26 +19,32 @@ jobs:
           node-version: "22"
       - name: Syntax-check shared scripts
         run: for file in *.js; do node --check "$file"; done
+      - name: No page loads a script the portal does not ship
+        run: "! grep -n 'supabase' *.html *.js"
 
   backend:
-    name: Database and edge functions
+    name: Database and server
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.1.4
-      - name: Type-check edge functions
-        run: deno check supabase/functions/*/index.ts
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+      - name: Syntax-check the server
+        working-directory: server
+        run: for file in src/*.js scripts/*.js; do node --check "$file"; done
       - name: Install test dependencies
         working-directory: tests
         run: npm ci
-      - name: Migration and RFID database tests
+      - name: Platform layer, migration and RFID database tests
         working-directory: tests
         run: npm run test:db
+      - name: Portal API tests (sign-in, row-level security, RPC, server functions)
+        working-directory: tests
+        run: npm run test:api
       - name: Teacher portal RFID panel and register tests
         working-directory: tests
         run: npm run test:ui

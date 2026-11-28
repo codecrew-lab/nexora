@@ -9,8 +9,7 @@
   <link rel="stylesheet" href="style.css?v=20261114-timetable1">
   <script src="pwa-installer.js" defer></script>
   <script src="portal-switcher.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="student-auth.js" defer></script>
   <style>
     .tt-page{max-width:1180px;margin:0 auto} #addTopButton{display:none!important} .tt-page>section[aria-labelledby="ttFormHeading"],#editOverlay{display:none!important}
@@ -150,7 +149,7 @@
     document.querySelectorAll('.tt-filter button').forEach(b=>b.addEventListener('click',()=>applyFilter(b.dataset.filter)));
     document.getElementById('todayButton').addEventListener('click',()=>{applyFilter('today');document.querySelector('.tt-day.is-today')?.scrollIntoView({behavior:'smooth',block:'start'})});
     async function loadSharedTimetable(){
-      const {data,error}=await supabaseClient.from('pulse_timetable').select('id,day_of_week,period_type,title,start_time,end_time,room,note').order('start_time');
+      const {data,error}=await nexoraClient.from('pulse_timetable').select('id,day_of_week,period_type,title,start_time,end_time,room,note').order('start_time');
       if(error){document.getElementById('weekSummary').textContent='Could not load the shared timetable. Please refresh.';console.error('Timetable load failed',error);return}
       render(data||[]);
     }

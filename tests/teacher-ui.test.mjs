@@ -1,5 +1,5 @@
 // Teacher portal UI tests: runs teacher-rfid.js and the attendance register from
-// teacher.html in jsdom against an in-memory Supabase stand-in that enforces the
+// teacher.html in jsdom against an in-memory stand-in for the API client that enforces the
 // same unique constraints as Postgres.
 //   cd tests && npm install && npm run test:ui
 import { JSDOM } from 'jsdom';
@@ -117,8 +117,8 @@ function setup({ failTables } = {}) {
   window.confirm = () => true;
   window.alert = () => {};
   window.NEXORA_TEACHER_USER_ID = 'teacher-uuid';
-  window.eval(`var supabaseClient;`);
-  window.supabaseClient = makeClient(tables, log, { failTables });
+  window.eval(`var nexoraClient;`);
+  window.nexoraClient = makeClient(tables, log, { failTables });
   window.eval(fs.readFileSync(`${repo}/attendance-utils.js`, 'utf8'));
   window.eval(fs.readFileSync(`${repo}/teacher-rfid.js`, 'utf8'));
   return { window, doc: window.document, tables, log, today };
@@ -206,7 +206,7 @@ console.log('RFID panel before migration');
   const { window, doc, tables } = setup({ failTables: new Set(['rfid_devices']) });
   window.NexoraRfidAdmin.studentsChanged(tables.students);
   await tick();
-  check('missing tables -> migration hint', /Run supabase\/migrations\/20261127120000_rfid_attendance_v2.sql/.test(doc.getElementById('rfidMessage').textContent), doc.getElementById('rfidMessage').textContent);
+  check('missing tables -> migration hint', /Apply db\/migrations\/20261127120000_rfid_attendance_v2.sql/.test(doc.getElementById('rfidMessage').textContent), doc.getElementById('rfidMessage').textContent);
   window.close();
 }
 
@@ -244,6 +244,92 @@ console.log('Attendance register');
   check('saved message survives the reload', doc.getElementById('attendanceSaveMessage').textContent === 'Saved 1 change.', doc.getElementById('attendanceSaveMessage').textContent);
   check('register reloads with no pending changes', doc.getElementById('saveClassAttendance').textContent === 'No changes to save');
   window.close();
+}
+
+console.log('Add user form');
+{
+  const { window, doc, tables } = setup();
+  const calls = [];
+  // Stand-in for the server's student-enroll function.
+  window.nexoraClient.functions = {
+    invoke: async (name, { body }) => {
+      calls.push({ name, body });
+      if (body.card_uid === '39C38E02') return { data: { error: 'Card 39C38E02 already belongs to Asha Rao.' }, error: { status: 409, message: 'The request failed (409).' } };
+      const student = { id: 4, student_name: body.student_name, class_name: body.class_name, student_code: 'CLASS8-4321' };
+      tables.students.push(student);
+      if (body.card_uid) tables.student_rfid_cards.push({ id: 9, student_id: 4, card_uid: body.card_uid, active: true, created_at: new Date().toISOString() });
+      return { data: { success: true, student, card_uid: body.card_uid || null }, error: null };
+    },
+  };
+  // Roster rows carry the same hooks teacher.html renders.
+  window.loadStudentsRoster = async () => {
+    doc.getElementById('studentsRosterList').innerHTML = tables.students
+      .map(st => `<div><span data-card-for="${st.id}">No card</span><button data-map-card="${st.id}">Map card</button></div>`).join('');
+    window.NexoraRfidAdmin.studentsChanged(tables.students);
+    window.NexoraEnroll.studentsChanged(tables.students);
+    window.NexoraEnroll.renderRosterCards();
+  };
+  window.eval(fs.readFileSync(`${repo}/teacher-enroll.js`, 'utf8'));
+  await window.loadStudentsRoster();
+  await tick();
+
+  const badge = id => text(doc.querySelector(`[data-card-for="${id}"]`));
+  check('roster shows who has a card', badge(1) === 'Card 39C38E02' && badge(3) === 'No card', [badge(1), badge(3)]);
+  check('roster button reads Change card / Map card', text(doc.querySelector('[data-map-card="1"]')) === 'Change card' && text(doc.querySelector('[data-map-card="3"]')) === 'Map card');
+  check('class suggestions come from the roster', [...doc.querySelectorAll('#enrollClassList option')].map(o => o.value).join() === 'Class 8');
+  const picks = [...doc.querySelectorAll('#enrollTappedCards button')].map(text);
+  check('recently tapped unassigned cards are offered', picks.some(t => t.startsWith('DEADBEEF')) && picks.some(t => t.startsWith('11223344')) && !picks.some(t => t.startsWith('39C38E02')), picks);
+
+  const form = doc.getElementById('enrollStudentForm');
+  const submit = async () => { form.dispatchEvent(new window.Event('submit', { cancelable: true })); await tick(); await tick(); };
+  const message = () => text(doc.getElementById('enrollMessage'));
+  doc.getElementById('enrollGeneratePassword').click();
+  const password = doc.getElementById('enrollPassword').value;
+  check('Generate makes a 12-character password without look-alike characters', /^[A-HJKMNP-Za-hjkmnp-z2-9]{12}$/.test(password), password);
+
+  doc.getElementById('enrollName').value = 'Nila Menon';
+  doc.getElementById('enrollClass').value = 'Class 8';
+  doc.getElementById('enrollCardUid').value = 'not-a-card';
+  await submit();
+  check('a malformed card UID is caught before anything is sent', calls.length === 0 && /8 to 20 hex/.test(message()), message());
+
+  doc.getElementById('enrollPassword').value = 'short';
+  doc.getElementById('enrollCardUid').value = '';
+  await submit();
+  check('a short password is caught', calls.length === 0 && /10 to 72/.test(message()), message());
+
+  doc.getElementById('enrollPassword').value = password;
+  doc.getElementById('enrollCardUid').value = '39C38E02';
+  await submit();
+  check('a card that is taken shows the server\'s reason and keeps the form', calls.length === 1 && /already belongs to Asha Rao/.test(message()) && doc.getElementById('enrollName').value === 'Nila Menon', message());
+
+  [...doc.querySelectorAll('#enrollTappedCards button')].find(b => text(b).startsWith('DEADBEEF')).click();
+  check('picking a tapped card fills the UID', doc.getElementById('enrollCardUid').value === 'DEADBEEF');
+  doc.getElementById('enrollCardUid').value = 'de:ad:be:ef';
+  await submit();
+  const sent = calls[1]?.body;
+  check('one request carries name, class, password and the normalised UID', calls[1]?.name === 'student-enroll' && sent.student_name === 'Nila Menon' && sent.class_name === 'Class 8' && sent.password === password && sent.card_uid === 'DEADBEEF', sent);
+  const result = text(doc.getElementById('enrollResult'));
+  check('result shows code, password and card once', !doc.getElementById('enrollResult').hidden && result.includes('CLASS8-4321') && result.includes(password) && result.includes('DEADBEEF (mapped'), result);
+  check('form is cleared for the next user', doc.getElementById('enrollName').value === '' && doc.getElementById('enrollPassword').value === '' && message() === '');
+  check('new user appears in the roster with the card', badge(4) === 'Card DEADBEEF', badge(4));
+  check('the mapped card leaves the unassigned list', ![...doc.querySelectorAll('#enrollTappedCards button')].some(b => text(b).startsWith('DEADBEEF')));
+
+  doc.getElementById('enrollName').value = 'No Card';
+  doc.getElementById('enrollClass').value = 'Class 9';
+  doc.getElementById('enrollGeneratePassword').click();
+  tables.students = tables.students.filter(st => st.id !== 4);
+  await submit();
+  check('the card is optional', calls[2]?.body.card_uid === '' && /not mapped yet/.test(text(doc.getElementById('enrollResult'))), calls[2]?.body);
+
+  // "Map card" on a roster row opens the card form for that student.
+  window.NexoraRfidAdmin.startAssign(3);
+  const details = doc.getElementById('rfidRegisterForm').closest('details');
+  check('Map card opens the card form with the student chosen', details.open && doc.getElementById('rfidRegisterStudent').value === '3' && /Meera Iyer/.test(text(doc.getElementById('rfidMessage'))), text(doc.getElementById('rfidMessage')));
+  check('and suggests the most recently tapped unassigned card', doc.getElementById('rfidRegisterUid').value === '11223344', doc.getElementById('rfidRegisterUid').value);
+  doc.getElementById('rfidRegisterForm').dispatchEvent(new window.Event('submit', { cancelable: true }));
+  await tick(); await tick();
+  check('registering it updates the roster badge', badge(3) === 'Card 11223344' && text(doc.querySelector('[data-map-card="3"]')) === 'Change card', badge(3));
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nUI PASSED');

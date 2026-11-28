@@ -40,5 +40,12 @@ hardware/**/config.h
 # the device secret. Firmware lives in hardware/.
 /*.ino
 
+# Server secrets (database password, signing key, sign-in codes). This repository
+# is public and GitHub Pages serves its root, so these must never be committed.
+.env
+.env.*
+!.env.example
+server/node_modules/
+
 # Push notification keys (never commit)
 .secrets/

@@ -16,15 +16,17 @@
 // ---------------------------------------------------------------------------
 // Server
 // ---------------------------------------------------------------------------
-// Must match the PULSE_RFID_DEVICE_SECRET edge-function secret in Supabase.
+// Must match PULSE_RFID_DEVICE_SECRET in the NEXORA server's environment.
 // Use at least 32 random characters, e.g. the output of: openssl rand -hex 24
 #define DEVICE_SECRET  "PASTE_THE_DEVICE_SECRET_HERE"
 
 // Short name for this reader, shown in the teacher portal. Use a-z, 0-9 and -.
 #define DEVICE_ID      "main-gate"
 
+// The NEXORA server's reader endpoint. HTTPS only; if the server ever moves, its
+// certificate must chain to one of the roots in certificates.h.
 #define ATTENDANCE_ENDPOINT \
-  "https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/pulse-rfid-attendance"
+  "https://nexora-api.azurewebsites.net/api/rfid/attendance"
 
 // POSIX time zone for the on-screen clock and offline timestamps (IST = UTC+5:30).
 #define TIMEZONE "IST-5:30"

@@ -1,5 +1,5 @@
 ﻿// NEXORA student authentication.
-// Student identity is established by a Supabase Auth session, never by localStorage alone.
+// Student identity is established by a server-issued session, never by localStorage alone.
 const NEXORA_STUDENT_EMAIL_SUFFIX = "@students.pulse.app";
 
 function NEXORAStudentEmail(code) {
@@ -36,8 +36,8 @@ async function NEXORAStudentSignIn(event) {
   const code = codeInput.value.trim().toUpperCase();
   const password = passwordInput.value;
 
-  if (!code || !password || !supabaseClient) {
-    errorBox.textContent = !supabaseClient
+  if (!code || !password || !nexoraClient) {
+    errorBox.textContent = !nexoraClient
       ? "The secure login service is unavailable. Please try again later."
       : "Enter your student code and password.";
     return;
@@ -48,7 +48,7 @@ async function NEXORAStudentSignIn(event) {
   errorBox.textContent = "";
 
   try {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
+    const { data, error } = await nexoraClient.auth.signInWithPassword({
       email: NEXORAStudentEmail(code),
       password
     });
@@ -62,7 +62,7 @@ async function NEXORAStudentSignIn(event) {
       return;
     }
 
-    const { data: profile, error: profileError } = await supabaseClient
+    const { data: profile, error: profileError } = await nexoraClient
       .from("students")
       .select("id,student_name,class_name,student_code,study_hours,attendance_pct,teacher_request,areas_to_improve")
       .eq("auth_user_id", data.user.id)
@@ -70,18 +70,17 @@ async function NEXORAStudentSignIn(event) {
 
     if (profileError) {
       console.error("NEXORA student profile verification failed.", profileError.code || profileError.message);
-      await supabaseClient.auth.signOut();
+      await nexoraClient.auth.signOut();
       errorBox.textContent = "Your login was accepted, but your student profile could not be verified. Please contact your teacher.";
       return;
     }
 
     if (!profile) {
-      await supabaseClient.auth.signOut();
+      await nexoraClient.auth.signOut();
       errorBox.textContent = "This login is not linked to an active student record. Please contact your teacher.";
       return;
     }
 
-    if (typeof NEXORAResetSessionDeadline === "function") NEXORAResetSessionDeadline();
     localStorage.setItem("auraway_student_code", profile.student_code);
     localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
     window.location.reload();
@@ -99,12 +98,12 @@ async function NEXORAInitializeStudentAuth() {
   const currentPage = window.location.pathname.split("/").pop() || "index.html";
   if (["teacher.html", "parent.html", "portals.html"].includes(currentPage)) return;
 
-  if (!supabaseClient) {
+  if (!nexoraClient) {
     NEXORAShowLogin("The secure login service is unavailable. Please try again later.");
     return;
   }
 
-  const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+  const { data: sessionData, error: sessionError } = await nexoraClient.auth.getSession();
   const session = sessionData?.session;
   if (sessionError || !session) {
     localStorage.removeItem("auraway_student_code");
@@ -113,14 +112,14 @@ async function NEXORAInitializeStudentAuth() {
     return;
   }
 
-  const { data: profile, error } = await supabaseClient
+  const { data: profile, error } = await nexoraClient
     .from("students")
     .select("id,student_name,class_name,student_code,study_hours,attendance_pct,teacher_request,areas_to_improve")
     .eq("auth_user_id", session.user.id)
     .maybeSingle();
 
   if (error || !profile) {
-    await supabaseClient.auth.signOut();
+    await nexoraClient.auth.signOut();
     localStorage.removeItem("auraway_student_code");
     localStorage.removeItem("auraway_student_profile");
     NEXORAShowLogin("This account is not linked to a student record. Ask your teacher for help.");
@@ -161,11 +160,11 @@ function NEXORAAddStudentAccountControls() {
 
 async function NEXORALoadSiblingAccounts() {
   const section = document.getElementById("NEXORASiblingAccounts");
-  if (!section || !supabaseClient) return;
+  if (!section || !nexoraClient) return;
   const list = section.querySelector("[data-sibling-list]");
   if (!list) return;
   list.textContent = "Loading linked accounts…";
-  const { data, error } = await supabaseClient.rpc("pulse_get_my_siblings");
+  const { data, error } = await nexoraClient.rpc("pulse_get_my_siblings");
   if (error) { list.textContent = "Sibling accounts are temporarily unavailable."; return; }
   if (!data?.length) {
     list.textContent = "No sibling accounts linked yet. Use the form above to add one.";
@@ -195,7 +194,7 @@ async function NEXORALoadSiblingAccounts() {
 async function NEXORAFinishSiblingAuthentication(code, password, targetId, requestId, panel) {
   const message = panel.querySelector("[data-switch-message]");
   const submit = panel.querySelector('button[type="submit"]');
-  const { data: signedIn, error: signInError } = await supabaseClient.auth.signInWithPassword({
+  const { data: signedIn, error: signInError } = await nexoraClient.auth.signInWithPassword({
     email: NEXORAStudentEmail(code),
     password
   });
@@ -206,30 +205,29 @@ async function NEXORAFinishSiblingAuthentication(code, password, targetId, reque
     return;
   }
   if (requestId) {
-    const { error: approvalError } = await supabaseClient.rpc("pulse_approve_sibling_link_request", {
+    const { error: approvalError } = await nexoraClient.rpc("pulse_approve_sibling_link_request", {
       p_request_id: requestId
     });
     if (approvalError) {
-      await supabaseClient.auth.signOut();
+      await nexoraClient.auth.signOut();
       localStorage.removeItem("auraway_student_code");
       localStorage.removeItem("auraway_student_profile");
       NEXORAShowLogin("Sibling verification could not be completed. Please sign in again.");
       return;
     }
   }
-  const { data: profile, error: profileError } = await supabaseClient
+  const { data: profile, error: profileError } = await nexoraClient
     .from("students")
     .select("id,student_name,class_name,student_code,study_hours,attendance_pct,teacher_request,areas_to_improve")
     .eq("auth_user_id", signedIn.user.id)
     .maybeSingle();
   if (profileError || !profile || (targetId && Number(profile.id) !== Number(targetId))) {
-    await supabaseClient.auth.signOut();
+    await nexoraClient.auth.signOut();
     localStorage.removeItem("auraway_student_code");
     localStorage.removeItem("auraway_student_profile");
     NEXORAShowLogin("The account could not be verified. Please sign in again.");
     return;
   }
-  if (typeof NEXORAResetSessionDeadline === "function") NEXORAResetSessionDeadline();
   localStorage.setItem("auraway_student_code", profile.student_code);
   localStorage.setItem("auraway_student_profile", JSON.stringify(profile));
   window.location.reload();
@@ -249,7 +247,7 @@ function NEXORAInitSiblingLinkForm() {
     if (!code || !password) return;
     submit.disabled = true;
     message.textContent = "Verifying the sibling account…";
-    const { data: requestId, error: requestError } = await supabaseClient.rpc("pulse_request_sibling_link", {
+    const { data: requestId, error: requestError } = await nexoraClient.rpc("pulse_request_sibling_link", {
       p_sibling_code: code
     });
     if (requestError || !requestId) {
@@ -280,7 +278,7 @@ function NEXORAOpenSiblingSwitch(sibling) {
       if (!code || !password) return;
       submit.disabled = true;
       panel.querySelector("[data-switch-message]").textContent = "Checking linked account…";
-      const { data: allowed, error: verifyError } = await supabaseClient.rpc("pulse_is_linked_sibling_code", {
+      const { data: allowed, error: verifyError } = await nexoraClient.rpc("pulse_is_linked_sibling_code", {
         p_student_code: code
       });
       if (verifyError || allowed !== true) {
@@ -309,7 +307,7 @@ async function studentLogout() {
   // Stop this student's notifications on this device before signing out.
   const code = window.NEXORA_CURRENT_STUDENT?.student_code;
   if (code && window.NEXORAPush) await NEXORAPush.disable("student", code).catch(() => {});
-  if (supabaseClient) await supabaseClient.auth.signOut();
+  if (nexoraClient) await nexoraClient.auth.signOut();
   localStorage.removeItem("auraway_student_code");
   localStorage.removeItem("auraway_student_profile");
   NEXORAShowLogin("You have signed out.");

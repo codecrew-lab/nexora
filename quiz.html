@@ -6,8 +6,7 @@
   <meta name="theme-color" content="#101426">
   <title>NEXORA — Daily Quiz Centre</title>
   <link rel="stylesheet" href="style.css?v=20261116-quiz-navfix">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="student-auth.js"></script>
   <script src="portal-switcher.js" defer></script>
   <style>
@@ -134,7 +133,7 @@
       form.replaceChildren();
       document.getElementById('submitQuiz').disabled = true;
       try {
-        const {data,error} = await supabaseClient.rpc('pulse_begin_daily_quiz',{p_subject:subject});
+        const {data,error} = await nexoraClient.rpc('pulse_begin_daily_quiz',{p_subject:subject});
         if (error) throw error;
         if (data.status === 'completed') {
           activeQuestions = [];
@@ -179,7 +178,7 @@
       const submit = document.getElementById('submitQuiz');
       submit.disabled = true; message.textContent = 'Checking your answers…';
       try {
-        const {data,error} = await supabaseClient.rpc('pulse_submit_daily_quiz',{p_subject:activeSubject,p_answers:answers});
+        const {data,error} = await nexoraClient.rpc('pulse_submit_daily_quiz',{p_subject:activeSubject,p_answers:answers});
         if (error) throw error;
         activeQuestions = [];
         message.textContent = 'Quiz completed! You scored ' + data.score + '/10. Your result has been saved. Come back tomorrow for your next attempt.';

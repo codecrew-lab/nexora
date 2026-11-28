@@ -1,8 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
+<script src="nexora-api.js"></script>
 <script src="student-auth.js"></script>
 <script src="push-notifications.js" defer></script>
   <meta charset="UTF-8">
@@ -331,16 +330,16 @@
     document.getElementById('dashCompletionPct').textContent = `${pct}%`;
     document.getElementById('dashCompletionSub').textContent = `${completedTasks} of ${tasks.length} tasks completed`;
 
-    // Cloud assignment totals are filled from Supabase after secure student authentication.
+    // Cloud assignment totals are filled from the server after secure student authentication.
     document.getElementById('dashPendingAssign').textContent = 'Loading…';
     document.getElementById('dashHydrationSub').textContent = 'Syncing cloud assignments…';
 
-    // Cloud assignment progress is loaded only after student-auth.js verifies the Supabase session.
+    // Cloud assignment progress is loaded only after student-auth.js verifies the student's session.
     async function loadCloudAssignmentProgress(profile) {
       const message = document.getElementById('cloudAssignmentMessage');
       const list = document.getElementById('cloudAssignmentList');
       const refresh = document.getElementById('refreshCloudAssignments');
-      if (!profile?.student_code || !supabaseClient) {
+      if (!profile?.student_code || !nexoraClient) {
         message.textContent = 'Sign in to view your cloud assignment progress.';
         list.textContent = 'Your assignment records will appear here after sign-in.';
         return;
@@ -351,10 +350,10 @@
       try {
         const code = profile.student_code;
         const [{ data: assignmentRows, error: assignmentError }, { data: updateRows, error: updateError }] = await Promise.all([
-          supabaseClient.from('assignments')
+          nexoraClient.from('assignments')
             .select('id,title,subject,due_date,target_code')
             .order('due_date', { ascending: true }),
-          supabaseClient.from('student_updates')
+          nexoraClient.from('student_updates')
             .select('assignment_id,status,updated_at')
             .eq('student_code', code)
             .order('updated_at', { ascending: false })

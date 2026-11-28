@@ -1,8 +1,8 @@
 // NEXORA web push notifications (PWA).
-// Requires supabase.js (supabaseClient) and the service worker registered by pwa-installer.js.
+// Requires nexora-api.js (nexoraClient) and the service worker registered by pwa-installer.js.
 (function () {
-  // Public VAPID key — safe to publish. The private key lives only in Supabase secrets.
-  const VAPID_PUBLIC_KEY = 'BLAnn_1icOq3IYmzui1HXP1nNeC2dPzf_oFCtcJ4Hi7EY4Yc0T_1wR-9PBR0bDzszo5WFInQshjGFXgpgDytK24';
+  // Public VAPID key: safe to publish. The private key lives only in the server's settings.
+  const VAPID_PUBLIC_KEY = 'BEpJ1qR_iCpWkKLvvW2MGPs0f52mrnQ2fkGpQoTD1xmEWSqaNF6V08JnFCFo34Lz4ObQrOKrQSTsTzNftvaK_Rk';
   const STORE_KEY = 'NEXORA_push_enabled_v1';
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
@@ -16,6 +16,12 @@
   function keyToBytes(base64url) {
     const padded = (base64url + '='.repeat((4 - base64url.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
     return Uint8Array.from(atob(padded), ch => ch.charCodeAt(0));
+  }
+
+  function sameKey(buffer, bytes) {
+    if (!buffer) return true; // the browser does not report the key; assume it is ours
+    const current = new Uint8Array(buffer);
+    return current.length === bytes.length && current.every((value, index) => value === bytes[index]);
   }
 
   function readEnabled() {
@@ -35,16 +41,12 @@
   }
 
   async function callFunction(body) {
-    // supabase.js declares supabaseClient with const, so it is not on window.
-    const client = typeof supabaseClient !== 'undefined' ? supabaseClient : null;
+    // nexora-api.js declares nexoraClient with const, so it is not on window.
+    const client = typeof nexoraClient !== 'undefined' ? nexoraClient : null;
     if (!client) throw new Error('Notification service unavailable.');
     const { data, error } = await client.functions.invoke('push-notify', { body });
-    if (error) {
-      let message = error.message;
-      try { message = (await error.context?.json())?.error || message; } catch (_) {}
-      throw new Error(message || 'Notification request failed.');
-    }
-    if (data?.error) throw new Error(data.error);
+    // The function's own message (data.error) is more useful than the HTTP status.
+    if (error || data?.error) throw new Error(data?.error || error?.message || 'Notification request failed.');
     return data;
   }
 
@@ -75,6 +77,11 @@
     if (permission !== 'granted') throw new Error('Notifications were not allowed.');
     const reg = await registration();
     let sub = await reg.pushManager.getSubscription();
+    // A subscription made with another server key cannot receive our notifications: replace it.
+    if (sub && !sameKey(sub.options?.applicationServerKey, keyToBytes(VAPID_PUBLIC_KEY))) {
+      await sub.unsubscribe().catch(() => {});
+      sub = null;
+    }
     if (!sub) {
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyToBytes(VAPID_PUBLIC_KEY) });
     }
