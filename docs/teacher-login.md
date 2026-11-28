@@ -1,31 +1,48 @@
-# NEXORA teacher code-only sign-in setup
+# Teacher sign-in
 
-This change replaces teacher sign-up with a sign-in form containing only:
-- Login Code
-- Secret Access Code
-- Sign In
+The teacher portal's sign-in form has two fields: **Login Code** and
+**Secret Access Code**. There is no teacher sign-up.
 
-## Supabase function secrets
+## How it works
 
-In the Supabase project dashboard, open **Edge Functions → Secrets** and add:
+1. `teacher.html` sends both codes to the NEXORA server
+   (`POST /api/auth/teacher-login`).
+2. The server compares them with `TEACHER_LOGIN_CODE` and `TEACHER_ACCESS_CODE`
+   from its environment. Five wrong attempts from one address block further
+   attempts for 15 minutes.
+3. If both match, the server starts a session for the existing account
+   `teacher@auraway.app` and returns it. It never creates accounts, changes
+   passwords or touches student data.
 
-- `TEACHER_LOGIN_CODE`: set this to the login code provided by the school.
-- `TEACHER_ACCESS_CODE`: keep the existing value already configured. Do not rotate or replace it for this change.
+The portal also accepts any account whose `raw_app_meta_data.role` is `teacher`
+or `school_admin`. Database policies use the same rule
+(`public.is_auraway_teacher()`).
 
-The function also uses the existing project secrets:
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+## Setup
 
-Never put these values in website JavaScript or commit them to GitHub.
+Set both codes in the server's environment (`.env` locally):
 
-## Deploy the Edge Function
+```
+TEACHER_LOGIN_CODE=…
+TEACHER_ACCESS_CODE=…
+```
 
-Deploy the function in `supabase/functions/bright-handler` to the linked Supabase project with JWT verification disabled (`verify_jwt = false`), because the function validates both codes itself. Keep the function's server-side code checks enabled. The teacher page calls the function route:
+Restart the server after changing them. Never put these values in website
+JavaScript or commit them: the repository is public.
 
-`/functions/v1/bright-handler`
+The account `teacher@auraway.app` is created by the first migration
+(`npm run db:setup`, see [postgres.md](postgres.md)); `npm run db:check`
+confirms it is there. It has no password, so the two codes are the only way in.
 
-After deployment, test sign-in using both codes. The function only signs in to the existing teacher account; it does not create users, change account metadata, change passwords, or modify student data.
+## Account model
 
-## Data safety
+One shared teacher identity is used because the school has one shared pair of
+codes. Anyone who knows both codes has full teacher access, so share them only
+with trusted staff, and change them when someone leaves. Changing the codes does
+not end sessions that are already signed in; those expire within seven days. To
+end them immediately:
 
-No SQL migration is required for this login change. It does not read, update, or delete student, attendance, marks, or RFID rows.
+```sql
+delete from auth.nexora_sessions
+where user_id = (select id from auth.users where lower(email) = 'teacher@auraway.app');
+```

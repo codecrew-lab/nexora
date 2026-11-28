@@ -2,7 +2,7 @@
 // ESP32 DevKit V1 + RC522 reader, optional SSD1306 OLED and passive buzzer.
 //
 // A student taps a card -> the reader POSTs the card UID to the
-// pulse-rfid-attendance Supabase edge function -> the server marks the student
+// NEXORA server (/api/rfid/attendance) -> the server marks the student
 // Present for today (IST) and replies with the student's name.
 //
 // Reliability features:

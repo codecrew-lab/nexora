@@ -9,14 +9,14 @@ Student taps card
    │
    ▼
 ESP32 reader (hardware/nexora_rfid_reader)
-   │  POST /functions/v1/pulse-rfid-attendance
+   │  POST /api/rfid/attendance
    │  header x-pulse-device-secret, body { card_uid, device_id, scanned_at? }
    ▼
-Edge function (supabase/functions/pulse-rfid-attendance)
+NEXORA server (server/src/app.js)
    │  checks the device secret, validates the UID
-   │  rpc record_rfid_scan(card_uid, device_id, scanned_at)
+   │  select record_rfid_scan(card_uid, device_id, scanned_at)
    ▼
-Postgres (supabase/migrations/20261127120000_rfid_attendance_v2.sql)
+Postgres (db/migrations/20261127120000_rfid_attendance_v2.sql)
    │  one transaction:
    │   ├─ student_rfid_cards  → which student owns this card?
    │   ├─ attendance_records  → insert Present (never overwrites an existing record)
@@ -30,10 +30,11 @@ Teachers, students and parents then read the same `attendance_records` rows:
 
 | Portal | Where | What they see |
 | --- | --- | --- |
+| Teacher | `teacher.html` → **Add User & Map RFID Card** (`teacher-enroll.js`) | New student, login and card in one step |
 | Teacher | `teacher.html` → **RFID Attendance** (`teacher-rfid.js`) | Live taps, reader status, unknown cards to assign, card registry, late cut-off |
 | Teacher | `teacher.html` → **Class Attendance Manager** | Register per class/date. RFID taps are pre-filled; teacher marks the rest |
 | Student | `attendance.html` | Own history with tap time and On time / Late |
-| Parent | `parent.html` via `parent-report` function | Child's history with tap time and On time / Late |
+| Parent | `parent.html` via the server's `parent-report` function | Child's history with tap time and On time / Late |
 
 Display rules (RFID vs. manual, late) live in one place: `attendance-utils.js`.
 
@@ -47,8 +48,9 @@ Display rules (RFID vs. manual, late) live in one place: `attendance-utils.js`.
 | `rfid_devices` | Reader heartbeat: last seen, firmware, Wi-Fi signal, queued taps | Teachers read and delete; only the server writes |
 | `attendance_settings` | Late cut-off time (default 09:30 IST) | Teachers |
 
-`record_rfid_scan()` and `rfid_device_heartbeat()` can only be executed with the
-service-role key, so browsers cannot fake taps.
+`record_rfid_scan()` and `rfid_device_heartbeat()` are not executable by the
+`anon` and `authenticated` roles that browser requests run as. Only the server's
+reader endpoint calls them, so browsers cannot fake taps.
 
 ### Rules
 
@@ -60,50 +62,27 @@ service-role key, so browsers cannot fake taps.
 - **Offline taps** carry their original time. Future times are clamped to now;
   taps older than 7 days are rejected (`scan_too_old`).
 
-## Deploy (first time, or upgrading from v1)
+## Deploy
 
-Order matters: the new edge function calls a database function that the
-migration creates.
-
-1. **Database**: run `supabase/migrations/20261127120000_rfid_attendance_v2.sql`
-   in the Supabase SQL Editor (or `supabase db push`). It is idempotent and only
-   adds things. Existing rows that v1 created (marked_by = null, Present) are
-   labelled `source = 'rfid'`.
-2. **Device secret**: in Edge Functions → Secrets, set
-   `PULSE_RFID_DEVICE_SECRET` to at least 32 random characters
-   (`openssl rand -hex 24`). Use the same value in each reader's `config.h`.
-3. **Edge functions**:
-   ```sh
-   supabase functions deploy pulse-rfid-attendance --no-verify-jwt
-   supabase functions deploy student-account-manager
-   supabase functions deploy parent-report
-   ```
-   `student-account-manager` must be redeployed: the live version only accepts the
-   old `zaminmohammed78-bit.github.io` origin and fails CORS on the current site.
-   The live `parent-report` and `bright-handler` were edited in the dashboard
-   and may differ from this repository. Compare them before redeploying.
-
-   The Android apps load pages from `file://`, so their requests carry
-   `Origin: null`. The live `bright-handler` rejects that with 403, which blocks
-   teacher sign-in in NEXORA-T, and the live `parent-report` blocks it in
-   NEXORA-P. The repository versions allow `null`. Redeploy them, or add `null`
-   to their allowlists in the dashboard:
-   ```sh
-   supabase functions deploy bright-handler --no-verify-jwt
-   ```
-4. **Readers**: flash `hardware/nexora_rfid_reader` (see its README).
-5. **Web**: merge to `main`. GitHub Pages publishes the portals. They work
-   before and after step 1. Until the migration runs, the RFID panel shows a
-   setup hint.
-
-Old v1 firmware keeps working against the new function. Unknown cards now
-return HTTP 200 with `result: "unregistered_card"`, so v1 readers show
-"UNKNOWN CARD" instead of "Server Error".
+1. **Database**: `cd server && npm run db:setup` creates everything, including
+   the RFID tables and functions ([postgres.md](postgres.md)).
+2. **Device secret**: set `PULSE_RFID_DEVICE_SECRET` in the server's environment
+   to at least 32 random characters (`openssl rand -hex 24`) and restart the
+   server. Use the same value in each reader's `config.h`.
+3. **Readers**: set `ATTENDANCE_ENDPOINT` in `config.h` to
+   `https://<your server>/api/rfid/attendance` and flash
+   `hardware/nexora_rfid_reader` (see its README).
+4. **Web**: merge to `main`. GitHub Pages publishes the portals. Until the
+   migration has run, the RFID panel shows a setup hint.
 
 ## Daily use
 
-- **New card**: tap it on the reader, then in the teacher portal under
-  *Unknown cards*, choose the student and press **Assign**.
+- **New student with a card**: tap the new card on a reader, then in the teacher
+  portal under *Add User & Map RFID Card* enter the name, class and a password,
+  pick the card from *Recently tapped* and press **Add user**. The student, their
+  login and the card are saved together.
+- **Card for an existing student**: press **Map card** (or **Change card**) on
+  the student's row, or tap the card and choose the student under *Unknown cards*.
 - **Lost card**: **Deactivate** it under *Registered cards*, then assign the new one.
   Assigning a new card to a student with an active card replaces the old one.
 - **Morning register**: open *Class Attendance Manager*, load today. RFID taps are

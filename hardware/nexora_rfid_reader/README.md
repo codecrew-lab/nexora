@@ -1,12 +1,12 @@
 # NEXORA RFID reader (ESP32 + RC522)
 
 The reader sits at the classroom door. A student taps their card, the reader
-sends the card UID to Supabase, and the student is marked **Present** for today.
+sends the card UID to the NEXORA server, and the student is marked **Present** for today.
 The OLED shows the student's name and the buzzer confirms the result.
 
 ```
  card ──► RC522 ──SPI──► ESP32 ──HTTPS──► pulse-rfid-attendance ──► record_rfid_scan()
-                           │                (edge function)            (Postgres)
+                           │                (NEXORA server)            (Postgres)
                      OLED + buzzer                                         │
                                                          attendance_records, rfid_scan_events
 ```
@@ -45,8 +45,9 @@ Pins can be changed in `config.h`.
    - `ArduinoJson` by Benoit Blanchon (**7.x**)
 3. Copy `config.example.h` to `config.h` and fill in:
    - `WIFI_SSID` / `WIFI_PASSWORD` (2.4 GHz network)
-   - `DEVICE_SECRET`: the same value as the `PULSE_RFID_DEVICE_SECRET`
-     edge-function secret in Supabase
+   - `DEVICE_SECRET`: the same value as `PULSE_RFID_DEVICE_SECRET` in the
+     NEXORA server's environment
+   - `ATTENDANCE_ENDPOINT`: `https://<your server>/api/rfid/attendance`
    - `DEVICE_ID`: a short name such as `main-gate` or `class-8a`
 4. Open `nexora_rfid_reader.ino`, select **ESP32 Dev Module**, and upload.
 5. Open the Serial Monitor at **115200** baud to see what the reader is doing.
@@ -63,7 +64,7 @@ device secret lets anyone mark attendance.
 | `ALREADY MARKED` + name | one long beep | Already recorded today (shows the status if a teacher set Absent/Leave) |
 | `UNKNOWN CARD` + UID | three low beeps | Card is not registered. A teacher can assign it in the portal |
 | `SAVED OFFLINE` | two short beeps | No connection. The tap is stored and synced automatically |
-| `DEVICE REJECTED` | falling tones | `DEVICE_SECRET` doesn't match the Supabase secret |
+| `DEVICE REJECTED` | falling tones | `DEVICE_SECRET` doesn't match the server's `PULSE_RFID_DEVICE_SECRET` |
 | `RFID READER ERROR` | falling tones at boot | The ESP32 can't talk to the RC522. Check the wiring |
 
 `Q5` in the top bar means 5 taps are waiting to sync.
@@ -103,11 +104,11 @@ Lost card: press **Deactivate** next to it in the portal, then assign the new ca
 | Problem | Fix |
 | --- | --- |
 | `config.h is missing` | Copy `config.example.h` to `config.h` |
-| `DEVICE_SECRET ... at least 32 characters` | Use a longer secret, e.g. `openssl rand -hex 24`, in both `config.h` and Supabase |
+| `DEVICE_SECRET ... at least 32 characters` | Use a longer secret, e.g. `openssl rand -hex 24`, in both `config.h` and the server's environment |
 | `MFRC522Extended.cpp: ordered comparison of pointer with integer zero` | ESP32 core 3.x uses a stricter compiler. Use core 2.0.17, or edit lines 824 and 847 of `MFRC522Extended.cpp` from `backLen > 0` to `*backLen > 0` |
 | Stuck on `Connecting WiFi...` | ESP32 only supports 2.4 GHz. Check the SSID and password |
 | Every tap shows `SAVED OFFLINE` while Wi-Fi works | Check the Serial Monitor. A TLS error usually means the clock hasn't synced (NTP blocked) or the certificate changed |
-| `SERVER ERROR HTTP 503` | The edge function is missing a secret, or the database migration hasn't been run |
+| `SERVER ERROR HTTP 503` | The server has no `PULSE_RFID_DEVICE_SECRET`, cannot reach its database, or the database migration hasn't been run |
 | Reads stop after a while | Usually power. Give the RC522 a clean 3.3 V supply and keep its wires short |
 
 ## Security notes
@@ -115,5 +116,5 @@ Lost card: press **Deactivate** next to it in the portal, then assign the new ca
 RFID UIDs can be copied, and the device secret can be extracted from a reader
 someone takes away. Treat a tap as a convenience, not proof of identity: keep the
 reader where a teacher can see it, and use the portal to correct records. If a
-reader is lost, change `PULSE_RFID_DEVICE_SECRET` in Supabase and re-flash the
+reader is lost, change `PULSE_RFID_DEVICE_SECRET` on the server and re-flash the
 other readers.

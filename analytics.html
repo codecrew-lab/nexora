@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXORA — My Analytics</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="student-auth.js"></script>
   <style>
     .analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
@@ -100,12 +99,12 @@
     async function loadAnalytics(){
       const profile=window.NEXORA_CURRENT_STUDENT;
       const code=profile?.student_code;
-      if(!code||!profile||!supabaseClient)return;
+      if(!code||!profile||!nexoraClient)return;
       document.getElementById('analyticsStudentName').textContent=(profile?.student_name||'Student')+' · Your personal progress';
       const [attendanceResult,assignmentResult,updatesResult]=await Promise.all([
-        supabaseClient.from('attendance_records').select('attendance_date,status').eq('student_code',code).order('attendance_date',{ascending:false}).limit(365),
-        supabaseClient.from('assignments').select('id,title,target_code,due_date').order('due_date',{ascending:true}),
-        supabaseClient.from('student_updates').select('assignment_id,status,updated_at').eq('student_code',code).order('updated_at',{ascending:false})
+        nexoraClient.from('attendance_records').select('attendance_date,status').eq('student_code',code).order('attendance_date',{ascending:false}).limit(365),
+        nexoraClient.from('assignments').select('id,title,target_code,due_date').order('due_date',{ascending:true}),
+        nexoraClient.from('student_updates').select('assignment_id,status,updated_at').eq('student_code',code).order('updated_at',{ascending:false})
       ]);
       const errors=[attendanceResult.error,assignmentResult.error,updatesResult.error].filter(Boolean);
       if(errors.length){document.getElementById('attendanceMessage').textContent='Some analytics could not load. Please refresh or ask your teacher to check access settings.';document.getElementById('assignmentMessage').textContent='Data access needs to be checked.';return;}
@@ -126,7 +125,7 @@
       charts.push({id:'assignmentChart',labels:['Done','Pending'],values:[done,pending],colors:['#10b981','#f59e0b']});
       document.getElementById('assignmentMessage').textContent=assignments.length?'Based on '+assignments.length+' assignments assigned to you':'No assignments assigned yet.';
 
-      const marksResult = await supabaseClient.from('student_marks')
+      const marksResult = await nexoraClient.from('student_marks')
         .select('exam_name,subject,marks_obtained,marks_total,assessed_on')
         .eq('student_id', profile.id)
         .order('assessed_on', { ascending: false }).limit(12);

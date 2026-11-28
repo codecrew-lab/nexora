@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXORA — Student Classroom</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="student-auth.js"></script>
   <style>
     .classroom-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -106,8 +105,8 @@
       }
 
       const [{ data: hwData, error: homeworkError }, { data: doneData, error: statusError }] = await Promise.all([
-        supabaseClient.from('assignments').select('*').order('due_date', { ascending: true }),
-        supabaseClient.from('student_updates').select('assignment_id,status,updated_at').eq('student_code', code).order('updated_at', { ascending: false })
+        nexoraClient.from('assignments').select('*').order('due_date', { ascending: true }),
+        nexoraClient.from('student_updates').select('assignment_id,status,updated_at').eq('student_code', code).order('updated_at', { ascending: false })
       ]);
 
       const container = document.getElementById('assignmentsList');
@@ -160,7 +159,7 @@
       const assignment = currentAssignments.find(item => item.id === assignmentId);
       if (!assignment) return;
 
-      const { error } = await supabaseClient.from('student_updates').insert([{
+      const { error } = await nexoraClient.from('student_updates').insert([{
         student_code: currentStudent.student_code,
         student_name: currentStudent.student_name,
         assignment_id: assignmentId,
@@ -175,7 +174,7 @@
       const note = document.getElementById('studentUpdateNote').value.trim();
       if (!note || !currentStudent) return alert('Please write a message first.');
 
-      const { error } = await supabaseClient.from('student_updates').insert([{
+      const { error } = await nexoraClient.from('student_updates').insert([{
         student_code: currentStudent.student_code,
         student_name: currentStudent.student_name,
         status: 'Student Note',

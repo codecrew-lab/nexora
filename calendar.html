@@ -7,8 +7,7 @@
   <title>NEXORA — Academic Calendar</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css?v=20261116-academic-calendar">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="portal-switcher.js" defer></script>
   <style>
     .calendar-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.8fr);gap:16px;align-items:start}
@@ -193,7 +192,7 @@
     function monthRange(){const first=new Date(monthCursor.getFullYear(),monthCursor.getMonth(),1);const last=new Date(monthCursor.getFullYear(),monthCursor.getMonth()+1,0);return {start:isoDate(first),end:isoDate(last)};}
     async function loadCalendar(){
       $('calendarNotice').textContent='Loading school calendar…';
-      const {data,error}=await supabaseClient.from('academic_calendar_events').select('*').gte('event_date',monthRange().start).lte('event_date',monthRange().end).order('event_date').order('created_at');
+      const {data,error}=await nexoraClient.from('academic_calendar_events').select('*').gte('event_date',monthRange().start).lte('event_date',monthRange().end).order('event_date').order('created_at');
       if(error){$('calendarNotice').textContent='Could not load the calendar: '+error.message;return;}
       calendarEvents=data||[];renderCalendar();
       $('calendarNotice').style.display='none';$('calendarWorkspace').style.display='block';
@@ -279,7 +278,7 @@
     function resetEventForm(){ $('calendarEventForm').reset();$('calendarEventId').value='';$('calendarEventDate').value=isoDate(selectedDate);$('calendarFormTitle').textContent='＋ Add calendar entry';$('calendarSaveButton').textContent='Save entry';$('calendarFormMessage').textContent='';}
     async function deleteCalendarEvent(id){
       if(!confirm('Delete this calendar entry?'))return;
-      const {error}=await supabaseClient.from('academic_calendar_events').delete().eq('id',id);
+      const {error}=await nexoraClient.from('academic_calendar_events').delete().eq('id',id);
       if(error){alert('Could not delete entry: '+error.message);return;}
       await loadCalendar();
     }
@@ -287,7 +286,7 @@
       e.preventDefault();const button=$('calendarSaveButton');button.disabled=true;$('calendarFormMessage').textContent='Saving…';
       const payload={school_id:schoolContext.school_id,title:$('calendarEventName').value.trim(),event_date:$('calendarEventDate').value,event_type:$('calendarEventType').value,description:$('calendarEventDescription').value.trim()};
       const id=$('calendarEventId').value;
-      const result=id?await supabaseClient.from('academic_calendar_events').update(payload).eq('id',id):await supabaseClient.from('academic_calendar_events').insert(payload);
+      const result=id?await nexoraClient.from('academic_calendar_events').update(payload).eq('id',id):await nexoraClient.from('academic_calendar_events').insert(payload);
       button.disabled=false;
       if(result.error){$('calendarFormMessage').textContent='Could not save: '+result.error.message;return;}
       resetEventForm();await loadCalendar();
@@ -298,7 +297,7 @@
     $('todayMonth').addEventListener('click',()=>{monthCursor.setFullYear(new Date().getFullYear(),new Date().getMonth(),1);selectedDate=new Date();selectedDate.setHours(0,0,0,0);loadCalendar();});
     async function loadUnassignedStudents(){
       const box=$('unassignedStudentsList');
-      const {data,error}=await supabaseClient.rpc('pulse_calendar_list_unassigned_students');
+      const {data,error}=await nexoraClient.rpc('pulse_calendar_list_unassigned_students');
       box.replaceChildren();
       if(error){box.textContent='Could not load student list: '+error.message;return;}
       if(!data?.length){const empty=document.createElement('p');empty.className='calendar-empty';empty.textContent='All available student profiles are already linked to a school.';box.append(empty);return;}
@@ -314,19 +313,19 @@
       const ids=[...document.querySelectorAll('.calendar-student-check:checked')].map(input=>Number(input.value));
       if(!ids.length){$('linkStudentsMessage').textContent='Select at least one student first.';return;}
       const btn=$('linkStudentsButton');btn.disabled=true;$('linkStudentsMessage').textContent='Linking selected students…';
-      const {data,error}=await supabaseClient.rpc('pulse_calendar_link_unassigned_students',{p_student_ids:ids});
+      const {data,error}=await nexoraClient.rpc('pulse_calendar_link_unassigned_students',{p_student_ids:ids});
       btn.disabled=false;$('linkStudentsMessage').textContent=error?'Could not link students: '+error.message:(data||0)+' student profiles linked to this school.';
       await loadUnassignedStudents();
     });
     $('createSchoolForm').addEventListener('submit',async e=>{
       e.preventDefault();const msg=$('createSchoolMessage');msg.textContent='Creating school…';
-      const {data,error}=await supabaseClient.rpc('pulse_calendar_create_school',{p_name:$('newSchoolName').value.trim()});
+      const {data,error}=await nexoraClient.rpc('pulse_calendar_create_school',{p_name:$('newSchoolName').value.trim()});
       if(error){msg.textContent=error.message;return;}
       msg.textContent='School created. Loading calendar…';await initialiseCalendar();
     });
     async function initialiseCalendar(){
-      if(!supabaseClient){$('calendarNotice').textContent='Supabase is not configured.';return;}
-      const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
+      if(!nexoraClient){$('calendarNotice').textContent='The calendar service is unavailable. Please try again later.';return;}
+      const {data:sessionData,error:sessionError}=await nexoraClient.auth.getSession();
       if(sessionError||!sessionData.session){
         $('menuToggle').style.display='none';
         $('aurawaySidebar').style.display='none';
@@ -334,7 +333,7 @@
         $('calendarNotice').textContent='Please sign in to view your school calendar.';
         return;
       }
-      const {data,error}=await supabaseClient.rpc('pulse_calendar_my_context');
+      const {data,error}=await nexoraClient.rpc('pulse_calendar_my_context');
       if(error){
         $('menuToggle').style.display='none';
         $('aurawaySidebar').style.display='none';

@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="style.css?v=20261114-nav2">
   <script src="pwa-installer.js" defer></script>
   <script src="portal-switcher.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="attendance-utils.js"></script>
   <script src="teacher-rfid.js"></script>
+  <script src="teacher-enroll.js"></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
     .standalone-wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
@@ -139,7 +139,7 @@
         <article class="teacher-overview-card"><span>Login accounts ready</span><strong id="teacherOverviewAccounts">—</strong><small>Students with linked accounts</small></article>
       </div>
       <div class="teacher-quick-actions">
-        <button type="button" class="btn" onclick="document.getElementById('addStudentForm').scrollIntoView({behavior:'smooth',block:'center'})">＋ Add student</button>
+        <button type="button" class="btn" onclick="document.getElementById('enrollStudentForm').scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('enrollName').focus({preventScroll:true})">＋ Add user</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherAttendanceManager').scrollIntoView({behavior:'smooth'})">Mark attendance</button>
         <button type="button" class="btn teacher-secondary-action" id="openTeacherAssignmentsPage">＋ Create / Publish Assignment</button>
         <button type="button" class="btn teacher-secondary-action" id="openAssignmentStatusFromDashboard">📊 Assignment Completion Status</button>
@@ -248,16 +248,26 @@
 
     <div id="teacherStudentsSection">
     <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); margin-bottom: 20px;">
-      <!-- Add Student & Generate Code -->
-      <div class="card">
-        <h3>➕ Add Student & Generate Code</h3>
-        <form id="addStudentForm" class="portal-form">
-          <input type="text" id="newStudentName" class="input-field" placeholder="Student Full Name" required>
-          <input type="text" id="newClassName" class="input-field" placeholder="Class (e.g. Class 8A)" required>
-          <button type="submit" class="btn">Generate Student Code</button>
+      <!-- Add a user: student record, login and RFID card in one step (teacher-enroll.js) -->
+      <div class="card" id="enrollStudentCard">
+        <h3>➕ Add User &amp; Map RFID Card</h3>
+        <p style="font-size:0.8rem; color:var(--text-secondary);">Creates the student, their login and their attendance card in one step.</p>
+        <form id="enrollStudentForm" class="portal-form" autocomplete="off">
+          <input type="text" id="enrollName" class="input-field" placeholder="Student Full Name" maxlength="120" required>
+          <input type="text" id="enrollClass" class="input-field" placeholder="Class (e.g. Class 8A)" maxlength="60" list="enrollClassList" required>
+          <datalist id="enrollClassList"></datalist>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="enrollPassword" class="input-field" placeholder="Login password (10+ characters)" minlength="10" maxlength="72" autocomplete="off" spellcheck="false" required style="flex:1;min-width:0;">
+            <button type="button" class="btn teacher-secondary-action" id="enrollGeneratePassword">Generate</button>
+          </div>
+          <input type="text" id="enrollCardUid" class="input-field rfid-uid" placeholder="RFID card UID (optional), e.g. 39C38E02" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <div id="enrollTappedCards" style="font-size:0.8rem;" aria-live="polite"></div>
+          <button type="submit" class="btn" id="enrollSubmit">Add user</button>
         </form>
+        <p id="enrollMessage" role="status" style="font-size:0.85rem;margin-top:8px;"></p>
+        <div id="enrollResult" hidden style="margin-top:12px; padding:12px; border:1px dashed #10b981; border-radius:var(--radius);"></div>
         <div id="newCodeBanner" style="display:none; margin-top:12px; padding:12px; border:1px dashed #10b981; border-radius:var(--radius); text-align:center;">
-          <small>Share this login code with the Student & Parent:</small>
+          <small>Login code for the Student & Parent:</small>
           <h2 id="generatedCodeDisplay" style="color:#10b981; margin:4px 0;"></h2>
           <p id="generatedLoginPassword" style="margin-top:8px;font-weight:700;word-break:break-all;"></p>
           <small id="generatedLoginInfo" style="display:block;margin-top:6px;color:var(--text-secondary);">Keep the student password private and share it directly with the student.</small>
@@ -490,8 +500,6 @@
     </form>
   </div>
   <script>
-    const TEACHER_AUTH_FUNCTION_URL = 'https://iazlemocpuhzwtrkyfgw.supabase.co/functions/v1/bright-handler';
-
     async function showTeacherPortal(session) {
       window.NEXORA_TEACHER_USER_ID = session?.user?.id;
       const email = session?.user?.email?.toLowerCase();
@@ -499,7 +507,7 @@
       const isAuthorisedTeacher = email === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(appRole);
       window.NEXORA_CAN_DELETE_STUDENT_ACTIVITY = email === 'teacher@auraway.app' || appRole === 'school_admin';
       if (!isAuthorisedTeacher) {
-        await supabaseClient.auth.signOut();
+        await nexoraClient.auth.signOut();
         document.getElementById('teacherLoginError').textContent = 'This account is not authorized for the teacher portal.';
         return;
       }
@@ -523,28 +531,20 @@
       const secretCode = document.getElementById('teacherAccessCode').value;
       const button = document.getElementById('teacherLoginButton');
       const errorBox = document.getElementById('teacherLoginError');
-      if (!supabaseClient || !loginCode || !secretCode) {
-        errorBox.textContent = 'Enter both codes to continue.';
+      if (!nexoraClient || !loginCode || !secretCode) {
+        errorBox.textContent = nexoraClient ? 'Enter both codes to continue.' : 'The sign-in service is unavailable. Please try again later.';
         return;
       }
       button.disabled = true;
       button.textContent = 'Signing in…';
       errorBox.textContent = '';
       try {
-        const response = await fetch(TEACHER_AUTH_FUNCTION_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
-          body: JSON.stringify({ action: 'signin', login_code: loginCode, access_code: secretCode })
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.token_hash) {
-          throw new Error(result.error || 'Teacher access could not be verified.');
+        const { data, error } = await nexoraClient.auth.signInWithTeacherCodes({ loginCode, accessCode: secretCode });
+        if (error || !data.session) {
+          throw new Error(error?.status === 0
+            ? 'Could not reach the sign-in service. Check your internet connection and try again.'
+            : error?.message || 'Teacher access could not be verified.');
         }
-        const { data, error } = await supabaseClient.auth.verifyOtp({
-          token_hash: result.token_hash,
-          type: 'email'
-        });
-        if (error || !data.session) throw new Error('Could not create a secure teacher session. Please try again.');
         document.getElementById('teacherLoginCode').value = '';
         document.getElementById('teacherAccessCode').value = '';
         await showTeacherPortal(data.session);
@@ -559,18 +559,18 @@
     document.getElementById('teacherLoginForm').addEventListener('submit', signInTeacher);
 
     document.getElementById('teacherSignOut').addEventListener('click', async () => {
-      await supabaseClient.auth.signOut();
+      await nexoraClient.auth.signOut();
       window.location.reload();
     });
 
     (async function initializeTeacherAuth() {
-      if (!supabaseClient) {
-        document.getElementById('teacherLoginError').textContent = 'Supabase is not configured.';
+      if (!nexoraClient) {
+        document.getElementById('teacherLoginError').textContent = 'The sign-in service is unavailable. Please try again later.';
         return;
       }
-      const { data } = await supabaseClient.auth.getSession();
+      const { data } = await nexoraClient.auth.getSession();
       if (data.session?.user?.email?.toLowerCase() === 'teacher@auraway.app' || ['teacher', 'school_admin'].includes(data.session?.user?.app_metadata?.role)) await showTeacherPortal(data.session);
-      else if (data.session) await supabaseClient.auth.signOut();
+      else if (data.session) await nexoraClient.auth.signOut();
     })();
 
     const html = document.documentElement;
@@ -586,7 +586,7 @@
 
     async function loadStudentsRoster() {
       const container = document.getElementById('studentsRosterList');
-      const { data, error } = await supabaseClient.from('students').select('*').order('created_at', { ascending: false });
+      const { data, error } = await nexoraClient.from('students').select('*').order('created_at', { ascending: false });
       if (error) {
         container.innerHTML = `<p style="color:#ef4444;">Error: ${error.message}</p>`;
         return;
@@ -599,6 +599,7 @@
       updateTeacherOverview();
       populateTeacherRosterFilter();
       window.NexoraRfidAdmin?.studentsChanged(allStudents);
+      window.NexoraEnroll?.studentsChanged(allStudents);
       if (allStudents.length === 0) {
         container.innerHTML = '<p style="color:var(--text-secondary);">No students added yet.</p>';
         return;
@@ -623,6 +624,8 @@
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <span class="code-badge">${st.student_code}</span>
+            <span class="rfid-badge rfid-badge-grey rfid-uid" data-card-for="${st.id}">No card</span>
+            <button class="btn" style="padding:4px 10px; font-size:0.75rem; background:#4338ca;" data-map-card="${st.id}" onclick="NexoraRfidAdmin.startAssign(${st.id})">Map card</button>
             <button class="btn" style="padding:4px 10px; font-size:0.75rem;" onclick="quickSelectStudent(${st.id})">Edit</button>
             <button class="btn" style="padding:4px 10px; font-size:0.75rem; background:#0f766e;" onclick="createStudentLogin(${st.id})">${st.auth_user_id ? 'Change Password' : 'Set Password'}</button>
             <button class="btn" style="padding:4px 10px; font-size:0.75rem; background:#ef4444;" onclick="deleteStudent(${st.id}, '${st.student_name.replace(/'/g, "\\'")}')">Delete</button>
@@ -631,6 +634,7 @@
         container.appendChild(div);
       });
       filterTeacherRoster();
+      window.NexoraEnroll?.renderRosterCards();
     }
 
     function updateTeacherOverview() {
@@ -716,7 +720,7 @@
     async function loadTeacherMarks() {
       const container = document.getElementById('teacherMarksRecent');
       if (!container) return;
-      const { data, error } = await supabaseClient.from('student_marks')
+      const { data, error } = await nexoraClient.from('student_marks')
         .select('id,student_id,exam_name,subject,marks_obtained,marks_total,assessed_on')
         .order('assessed_on', { ascending: false }).limit(20);
       if (error) {
@@ -763,7 +767,7 @@
       const button = event.submitter;
       if (button) { button.disabled = true; button.textContent = 'Saving…'; }
       message.textContent = '';
-      const { error } = await supabaseClient.from('student_marks').insert({
+      const { error } = await nexoraClient.from('student_marks').insert({
         student_id: studentId,
         exam_name: examName,
         subject,
@@ -787,7 +791,7 @@
 
     async function deleteStudent(id, name) {
       if (!confirm(`Remove ${name}? Their student code will stop working immediately.`)) return;
-      const { error } = await supabaseClient.from('students').delete().eq('id', id);
+      const { error } = await nexoraClient.from('students').delete().eq('id', id);
       if (error) return alert('Error: ' + error.message);
       loadStudentsRoster();
     }
@@ -842,7 +846,7 @@
       }
       const codes = students.map(student => student.student_code);
       // select('*') works both before and after the RFID v2 migration adds columns.
-      const { data: records, error } = await supabaseClient.from('attendance_records')
+      const { data: records, error } = await nexoraClient.from('attendance_records')
         .select('*').eq('attendance_date', date).in('student_code', codes);
       if (error) {
         roster.textContent = 'Could not load attendance. ' + error.message;
@@ -974,7 +978,7 @@
       const message = document.getElementById('attendanceSaveMessage');
       button.disabled = true;
       button.textContent = 'Deleting…';
-      const { data, error } = await supabaseClient
+      const { data, error } = await nexoraClient
         .from('attendance_records')
         .delete()
         .eq('id', recordId)
@@ -1007,12 +1011,12 @@
         attendance_date: date,
         status: select.value
       }));
-      const { error } = await supabaseClient.from('attendance_records')
+      const { error } = await nexoraClient.from('attendance_records')
         .upsert(records, { onConflict: 'student_code,attendance_date' });
       if (error) {
         updateAttendanceSaveState();
         message.style.color = '#ef4444';
-        message.textContent = 'Save failed: ' + error.message + '. Check the Supabase SQL setup and teacher login.';
+        message.textContent = 'Save failed: ' + error.message + '. Sign in again and retry; if it keeps failing, check the database setup.';
         return;
       }
       await loadAttendanceRoster('Saved ' + records.length + (records.length === 1 ? ' change.' : ' changes.'));
@@ -1026,8 +1030,8 @@
         async function loadAssignmentOverview() {
       const container = document.getElementById('teacherAssignmentOverview');
       const [{ data: assignments, error: assignmentError }, { data: updates, error: updatesError }] = await Promise.all([
-        supabaseClient.from('assignments').select('*').order('due_date', { ascending: true }),
-        supabaseClient.from('student_updates')
+        nexoraClient.from('assignments').select('*').order('due_date', { ascending: true }),
+        nexoraClient.from('student_updates')
           .select('assignment_id,student_code,status,updated_at')
           .in('status', ['Completed', 'Not Completed'])
           .order('updated_at', { ascending: false })
@@ -1174,7 +1178,7 @@
     }
     async function loadTeacherAnalytics() {
       const message=document.getElementById('teacherAnalyticsMessage');
-      if(!supabaseClient||!allStudents.length){
+      if(!nexoraClient||!allStudents.length){
         document.getElementById('teacherAnalyticsAttendance').textContent='—';
         document.getElementById('teacherAnalyticsCompletion').textContent='—';
         document.getElementById('teacherAnalyticsStudents').textContent=allStudents.length;
@@ -1185,9 +1189,9 @@
       }
       const codes=allStudents.map(s=>s.student_code);
       const [attendanceResult,assignmentResult,updatesResult]=await Promise.all([
-        supabaseClient.from('attendance_records').select('student_code,status').in('student_code',codes).limit(2000),
-        supabaseClient.from('assignments').select('id,target_code'),
-        supabaseClient.from('student_updates').select('assignment_id,student_code,status,updated_at').in('status',['Completed','Not Completed']).order('updated_at',{ascending:false}).limit(5000)
+        nexoraClient.from('attendance_records').select('student_code,status').in('student_code',codes).limit(2000),
+        nexoraClient.from('assignments').select('id,target_code'),
+        nexoraClient.from('student_updates').select('assignment_id,student_code,status,updated_at').in('status',['Completed','Not Completed']).order('updated_at',{ascending:false}).limit(5000)
       ]);
       const error=attendanceResult.error||assignmentResult.error||updatesResult.error;
       if(error){message.textContent='Could not load analytics. Check teacher data permissions and refresh. '+error.message;return;}
@@ -1238,26 +1242,6 @@
         document.getElementById('editStudentsForm').scrollIntoView({ behavior: 'smooth' });
       }
     }
-
-    document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const student_name = document.getElementById('newStudentName').value.trim();
-      const class_name = document.getElementById('newClassName').value.trim();
-      const code = `${class_name.replace(/\s+/g, '').toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      const { data: createdStudent, error } = await supabaseClient.from('students')
-        .insert([{ student_name, class_name, student_code: code }])
-        .select('id')
-        .single();
-      if (error) return alert('Error: ' + error.message);
-
-      document.getElementById('generatedCodeDisplay').textContent = code;
-      document.getElementById('generatedLoginPassword').textContent = 'Creating secure student login…';
-      document.getElementById('newCodeBanner').style.display = 'block';
-      e.target.reset();
-      await createStudentLogin(createdStudent.id);
-      await loadStudentsRoster();
-    });
 
     function requestPermanentStudentPassword() {
       return new Promise((resolve) => {
@@ -1311,8 +1295,8 @@
 
       banner.style.display = 'block';
       passwordDisplay.textContent = 'Saving permanent password…';
-      info.textContent = 'Please wait. The password is stored securely by Supabase Auth.';
-      const { data, error } = await supabaseClient.functions.invoke('student-account-manager', {
+      info.textContent = 'Please wait. The password is stored securely and can be reset here at any time.';
+      const { data, error } = await nexoraClient.functions.invoke('student-account-manager', {
         body: { student_id: studentId, password }
       });
       if (error || !data?.success) {
@@ -1347,7 +1331,7 @@
 
       if (Object.keys(updates).length === 0) return alert('Enter at least one field to update.');
 
-      const { error } = await supabaseClient.from('students').update(updates).in('id', selectedIds);
+      const { error } = await nexoraClient.from('students').update(updates).in('id', selectedIds);
       if (error) return alert('Update failed: ' + error.message);
 
       alert(`✅ Updated ${selectedIds.length} student(s)!`);
@@ -1366,7 +1350,7 @@
 
     async function loadTeacherAssignmentManager() {
       const list = document.getElementById('teacherAssignmentManageList');
-      const { data, error } = await supabaseClient.from('assignments').select('*').order('due_date', { ascending: true });
+      const { data, error } = await nexoraClient.from('assignments').select('*').order('due_date', { ascending: true });
       if (error) {
         list.textContent = 'Could not load assignments: ' + error.message;
         return;
@@ -1407,7 +1391,7 @@
         del.addEventListener('click', async () => {
           if (!window.confirm('Delete "' + (assignment.title || 'this assignment') + '"? This removes the published assignment. This action cannot be undone.')) return;
           del.disabled = true;
-          const { error: deleteError } = await supabaseClient.from('assignments').delete().eq('id', assignment.id);
+          const { error: deleteError } = await nexoraClient.from('assignments').delete().eq('id', assignment.id);
           if (deleteError) {
             del.disabled = false;
             alert('Could not delete assignment: ' + deleteError.message);
@@ -1436,8 +1420,8 @@
       const target_code = document.getElementById('hwTarget').value || 'ALL';
       const payload = { title, subject, due_date, target_code };
       const result = id
-        ? await supabaseClient.from('assignments').update(payload).eq('id', id)
-        : await supabaseClient.from('assignments').insert([payload]);
+        ? await nexoraClient.from('assignments').update(payload).eq('id', id)
+        : await nexoraClient.from('assignments').insert([payload]);
       if (result.error) return alert('Error: ' + result.error.message);
       alert(id ? '✅ Assignment updated successfully!' : '🎉 Assignment published successfully!');
       resetAssignmentForm();
@@ -1523,7 +1507,7 @@
         const toggle = document.createElement('button'); toggle.type='button'; toggle.className='btn teacher-secondary-action'; toggle.textContent=question.is_active?'Deactivate':'Activate';
         toggle.addEventListener('click', async () => {
           toggle.disabled=true;
-          const {error:toggleError}=await supabaseClient.rpc('pulse_teacher_set_quiz_question_active',{p_id:question.id,p_active:!question.is_active});
+          const {error:toggleError}=await nexoraClient.rpc('pulse_teacher_set_quiz_question_active',{p_id:question.id,p_active:!question.is_active});
           if(toggleError){document.getElementById('teacherQuizListMessage').textContent='Could not update question: '+toggleError.message;toggle.disabled=false;return;}
           await loadTeacherQuizManager();
         });
@@ -1567,10 +1551,10 @@
 
     async function loadTeacherQuizManager() {
       const list = document.getElementById('teacherQuizQuestionList');
-      if (!list || !supabaseClient) return;
+      if (!list || !nexoraClient) return;
       list.innerHTML = '<p class="quiz-status">Loading question bank…</p>';
       const subject = document.getElementById('teacherQuizFilter')?.value || null;
-      const { data, error } = await supabaseClient.rpc('pulse_teacher_list_quiz_questions', { p_subject: subject });
+      const { data, error } = await nexoraClient.rpc('pulse_teacher_list_quiz_questions', { p_subject: subject });
       if (error) {
         list.textContent = 'Could not load question bank: ' + error.message;
         document.getElementById('teacherQuizListMessage').textContent = 'Check that you are signed in with the authorised teacher account.';
@@ -1595,7 +1579,7 @@
       save.disabled = true; msg.textContent = 'Saving question…';
       try {
         const idValue = document.getElementById('teacherQuizQuestionId').value;
-        const {error} = await supabaseClient.rpc('pulse_teacher_save_quiz_question', {
+        const {error} = await nexoraClient.rpc('pulse_teacher_save_quiz_question', {
           p_id: idValue ? Number(idValue) : null,
           p_subject: document.getElementById('teacherQuizSubject').value,
           p_question: document.getElementById('teacherQuizQuestionText').value.trim(),
@@ -1639,9 +1623,9 @@
     }
     async function loadTeacherExams() {
       const container = document.getElementById('teacherExamList');
-      if (!container || !supabaseClient || !window.NEXORA_TEACHER_USER_ID) return;
+      if (!container || !nexoraClient || !window.NEXORA_TEACHER_USER_ID) return;
       container.textContent = 'Loading exams…';
-      const { data, error } = await supabaseClient.from('nexora_exams')
+      const { data, error } = await nexoraClient.from('nexora_exams')
         .select('id,title,subject,starts_at,duration_minutes,status')
         .eq('created_by', window.NEXORA_TEACHER_USER_ID).eq('created_by_role', 'teacher')
         .order('starts_at', { ascending: true });
@@ -1660,7 +1644,7 @@
     async function publishTeacherExam(event) {
       event.preventDefault();
       const form = document.getElementById('teacherExamCreateForm'), message = document.getElementById('teacherExamCreateMessage'), button = document.getElementById('teacherExamPublishButton');
-      if (!supabaseClient || !window.NEXORA_TEACHER_USER_ID) { message.textContent = 'Please sign in to the teacher portal again.'; return; }
+      if (!nexoraClient || !window.NEXORA_TEACHER_USER_ID) { message.textContent = 'Please sign in to the teacher portal again.'; return; }
       const allToggle = document.getElementById('teacherExamAllStudents');
       const chosen = [...document.querySelectorAll('.teacher-exam-student-choice:checked')].map(el => Number(el.value)).filter(Number.isSafeInteger);
       const recipients = allToggle.checked ? allStudents.map(s => s.id) : chosen;
@@ -1671,16 +1655,16 @@
       if (!title || !subject || !startsValue || !Number.isInteger(duration) || duration < 1 || duration > 600) { message.textContent = 'Check the title, subject, date and duration.'; return; }
       button.disabled = true; message.textContent = 'Publishing exam…';
       try {
-        const { data: exam, error: examError } = await supabaseClient.from('nexora_exams').insert({
+        const { data: exam, error: examError } = await nexoraClient.from('nexora_exams').insert({
           title, subject, instructions: document.getElementById('teacherExamInstructions').value.trim(),
           starts_at: new Date(startsValue).toISOString(), duration_minutes: duration, status: 'published',
           visibility: 'assigned', created_by: window.NEXORA_TEACHER_USER_ID, created_by_role: 'teacher', created_by_student_id: null
         }).select('id').single();
         if (examError) throw examError;
         const targets = recipients.map(studentId => ({exam_id:exam.id,student_id:studentId,assigned_by:window.NEXORA_TEACHER_USER_ID}));
-        const { error: targetError } = await supabaseClient.from('nexora_exam_targets').insert(targets);
+        const { error: targetError } = await nexoraClient.from('nexora_exam_targets').insert(targets);
         if (targetError) {
-          await supabaseClient.from('nexora_exams').delete().eq('id', exam.id);
+          await nexoraClient.from('nexora_exams').delete().eq('id', exam.id);
           throw targetError;
         }
         form.reset(); allToggle.checked = true;
@@ -1733,15 +1717,15 @@
         info.append(title,meta);
         const actions=document.createElement('div');actions.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
         const edit=document.createElement('button');edit.type='button';edit.className='btn teacher-secondary-action';edit.textContent='Edit';edit.addEventListener('click',()=>{editingId=row.id;el('ttTeacherDay').value=row.day_of_week;el('ttTeacherType').value=row.period_type;el('ttTeacherTitle').value=row.title;el('ttTeacherRoom').value=row.room||'';el('ttTeacherStart').value=String(row.start_time).slice(0,5);el('ttTeacherEnd').value=String(row.end_time).slice(0,5);el('ttTeacherNote').value=row.note||'';el('ttTeacherSave').textContent='Save changes';el('ttTeacherCancel').hidden=false;form.scrollIntoView({behavior:'smooth',block:'center'});el('ttTeacherTitle').focus()});
-        const del=document.createElement('button');del.type='button';del.className='btn teacher-secondary-action';del.textContent='Remove';del.addEventListener('click',async()=>{if(!confirm('Remove this timetable period?'))return;const {error}=await supabaseClient.from('pulse_timetable').delete().eq('id',row.id);if(error){message('Could not remove this period. Check teacher access.',true);return}message('Period removed.');await load()});
+        const del=document.createElement('button');del.type='button';del.className='btn teacher-secondary-action';del.textContent='Remove';del.addEventListener('click',async()=>{if(!confirm('Remove this timetable period?'))return;const {error}=await nexoraClient.from('pulse_timetable').delete().eq('id',row.id);if(error){message('Could not remove this period. Check teacher access.',true);return}message('Period removed.');await load()});
         actions.append(edit,del);line.append(info,actions);wrap.append(line);
       });box.append(wrap);
     });
   }
-  async function load(){const {data,error}=await supabaseClient.from('pulse_timetable').select('*').order('day_of_week').order('start_time');if(error){message('Could not load timetable: '+error.message,true);return}rows=data||[];render()}
+  async function load(){const {data,error}=await nexoraClient.from('pulse_timetable').select('*').order('day_of_week').order('start_time');if(error){message('Could not load timetable: '+error.message,true);return}rows=data||[];render()}
   form.addEventListener('submit',async e=>{
     e.preventDefault();
-    const {data:sessionData}=await supabaseClient.auth.getSession();const session=sessionData?.session;
+    const {data:sessionData}=await nexoraClient.auth.getSession();const session=sessionData?.session;
     if(!session||!(session.user.email?.toLowerCase()==='teacher@auraway.app'||['teacher','school_admin'].includes(session.user.app_metadata?.role))){message('Teacher sign-in required. Students and parents cannot edit.',true);return}
     const day=el('ttTeacherDay').value,start=el('ttTeacherStart').value,end=el('ttTeacherEnd').value;
     if(end<=start){message('End time must be later than start time.',true);return}
@@ -1749,13 +1733,13 @@
     const clash=rows.some(r=>r.day_of_week===day&&r.id!==editingId&&startMin<Number(String(r.end_time).slice(0,2))*60+Number(String(r.end_time).slice(3))&&endMin>Number(String(r.start_time).slice(0,2))*60+Number(String(r.start_time).slice(3)));
     if(clash){message('This period overlaps another period on that day.',true);return}
     const payload={day_of_week:day,period_type:el('ttTeacherType').value,title:el('ttTeacherTitle').value.trim(),room:el('ttTeacherRoom').value.trim(),start_time:start,end_time:end,note:el('ttTeacherNote').value.trim(),updated_by:session.user.id};
-    const result=editingId?await supabaseClient.from('pulse_timetable').update(payload).eq('id',editingId):await supabaseClient.from('pulse_timetable').insert(payload);
+    const result=editingId?await nexoraClient.from('pulse_timetable').update(payload).eq('id',editingId):await nexoraClient.from('pulse_timetable').insert(payload);
     if(result.error){message('Save failed: '+result.error.message,true);return}
     message(editingId?'Timetable period updated.':'Timetable period published.');resetForm();await load();
   });
   el('ttTeacherCancel').addEventListener('click',resetForm);
   el('refreshTeacherTimetable').addEventListener('click',load);
-  async function init(){const {data,error}=await supabaseClient.auth.getSession();const s=data?.session;if(error||!(s?.user?.email?.toLowerCase()==='teacher@auraway.app'||['teacher','school_admin'].includes(s?.user?.app_metadata?.role))){message('Sign in with the authorised teacher account to manage the timetable.',true);form.querySelectorAll('input,select,button').forEach(x=>x.disabled=true);return}teacherUserId=s.user.id;await load()}
+  async function init(){const {data,error}=await nexoraClient.auth.getSession();const s=data?.session;if(error||!(s?.user?.email?.toLowerCase()==='teacher@auraway.app'||['teacher','school_admin'].includes(s?.user?.app_metadata?.role))){message('Sign in with the authorised teacher account to manage the timetable.',true);form.querySelectorAll('input,select,button').forEach(x=>x.disabled=true);return}teacherUserId=s.user.id;await load()}
   document.addEventListener('DOMContentLoaded',init,{once:true});
   if(document.readyState!=='loading')init();
 })();

@@ -9,8 +9,7 @@
   <link rel="stylesheet" href="style.css?v=20261114-parent3">
   <script src="pwa-installer.js" defer></script>
   <script src="portal-switcher.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="attendance-utils.js"></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
@@ -170,7 +169,7 @@
       button.textContent = 'Checking…';
 
       try {
-        const { data: report, error } = await supabaseClient.functions.invoke('parent-report', {
+        const { data: report, error } = await nexoraClient.functions.invoke('parent-report', {
           body: { student_code: code }
         });
         if (error || !report?.success || !report?.student) {

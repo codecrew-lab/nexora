@@ -354,8 +354,8 @@ begin
 end;
 $$;
 
--- Supabase grants EXECUTE on new public functions to anon/authenticated by
--- default. These must only be reachable with the service-role key.
+-- PostgreSQL lets everyone execute a new function by default. These must only
+-- be reachable by the server's reader endpoint, never by a browser request.
 revoke all on function public.record_rfid_scan(text, text, timestamptz) from public, anon, authenticated;
 revoke all on function public.rfid_device_heartbeat(text, text, integer, integer) from public, anon, authenticated;
 revoke all on function public.rfid_normalise_device_id(text) from public, anon, authenticated;

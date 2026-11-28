@@ -1,0 +1,21 @@
+{
+  "name": "nexora-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NEXORA API server: sign-in, data access and the RFID reader endpoint on our own PostgreSQL",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=../.env src/index.js",
+    "db:setup": "node --env-file-if-exists=../.env scripts/db.js setup",
+    "db:platform": "node --env-file-if-exists=../.env scripts/db.js platform",
+    "db:migrate": "node --env-file-if-exists=../.env scripts/db.js migrate",
+    "db:check": "node --env-file-if-exists=../.env scripts/db.js check"
+  },
+  "dependencies": {
+    "bcryptjs": "3.0.3",
+    "pg": "8.23.1"
+  }
+}

@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  <script src="nexora-api.js"></script>
   <script src="student-auth.js"></script>
   <title>NEXORA — Academic Marks Manager</title>
   <link rel="stylesheet" href="style.css">
@@ -145,17 +144,17 @@
       localStorage.setItem('auraway_theme', nextTheme);
     });
 
-    // Official school results are loaded only after Supabase confirms the student's identity.
+    // Official school results are loaded only after the server confirms the student's identity.
     async function loadOfficialSchoolMarks(profile) {
       const list = document.getElementById('officialMarksList');
       const average = document.getElementById('officialMarksAverage');
       const count = document.getElementById('officialMarksCount');
-      if (!supabaseClient || !profile?.id) {
+      if (!nexoraClient || !profile?.id) {
         list.textContent = 'Sign in to view your official school results.';
         return;
       }
       list.textContent = 'Loading your school results…';
-      const { data, error } = await supabaseClient.from('student_marks')
+      const { data, error } = await nexoraClient.from('student_marks')
         .select('id,exam_name,subject,marks_obtained,marks_total,assessed_on,teacher_note')
         .eq('student_id', profile.id)
         .order('assessed_on', { ascending: false });

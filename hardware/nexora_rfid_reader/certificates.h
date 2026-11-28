@@ -1,13 +1,15 @@
-// Root certificates the reader trusts for HTTPS to Supabase.
+// Root certificates the reader trusts for HTTPS to the NEXORA server.
 //
-// Supabase currently chains to Google Trust Services "GTS Root R4". GTS Root R1
-// and Let's Encrypt "ISRG Root X1" are included too, so the reader keeps working
-// if Supabase rotates to another common CA. TLS verification stays on; never
-// replace this with setInsecure().
+// The server's certificate must chain to one of these: Let's Encrypt "ISRG Root
+// X1" (Caddy, certbot and most hosts) or Google Trust Services "GTS Root R1" /
+// "GTS Root R4". If your host uses another CA (Azure App Service's default
+// *.azurewebsites.net certificate chains to DigiCert Global Root G2), append
+// that root below. TLS verification stays on; never replace this with
+// setInsecure().
 //
 // Order: GTS Root R1, GTS Root R4, ISRG Root X1. Source: macOS system root store. Expiry: GTS R1/R4 2036-06-22, ISRG X1 2035-06-04.
 // Check with:
-//   openssl s_client -connect iazlemocpuhzwtrkyfgw.supabase.co:443 -showcerts
+//   openssl s_client -connect YOUR-NEXORA-SERVER:443 -showcerts
 #pragma once
 
 static const char ROOT_CA_BUNDLE[] = R"PEM(

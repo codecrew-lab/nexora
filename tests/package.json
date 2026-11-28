@@ -2,10 +2,11 @@
   "name": "nexora-tests",
   "private": true,
   "type": "module",
-  "description": "Database and RFID endpoint tests for NEXORA",
+  "description": "Database, server API, RFID endpoint and UI tests for NEXORA",
   "scripts": {
-    "test": "npm run test:db && npm run test:ui && npm run test:e2e",
+    "test": "npm run test:db && npm run test:api && npm run test:ui && npm run test:e2e",
     "test:db": "node rfid-database.test.mjs",
+    "test:api": "node server-api.test.mjs",
     "test:ui": "node teacher-ui.test.mjs",
     "test:e2e": "node rfid-endpoint.test.mjs"
   },
