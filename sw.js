@@ -1,4 +1,4 @@
-const CACHE_NAME = 'NEXORA-Pwa-v32';
+const CACHE_NAME = 'NEXORA-Pwa-v33';
 
 // Keep this list limited to files that should be available offline.
 // Each file is cached independently so one missing/renamed optional page
@@ -28,6 +28,8 @@ const ASSETS_TO_CACHE = [
   './navigation.js',
   './student-auth.js',
   './supabase.js',
+  './attendance-utils.js',
+  './teacher-rfid.js',
   './pwa-installer.js',
   './portal-switcher.js',
   './back-navigation.js',

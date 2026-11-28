@@ -1,16 +1,32 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://zaminmohammed78-bit.github.io",
+// Browser origins allowed to call this function: the GitHub Pages site, the
+// Android apps, and local development. The Android apps load pages from
+// file:///android_asset, which browsers report as the origin "null". That is
+// safe here because this function uses no cookies or ambient credentials.
+// Set the NEXORA_ALLOWED_ORIGINS secret (comma-separated) to override.
+const allowedOrigins = new Set(
+  (Deno.env.get("NEXORA_ALLOWED_ORIGINS") ??
+    "https://codecrew-lab.github.io,null,http://localhost:3000,http://127.0.0.1:5500")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const defaultOrigin = "https://codecrew-lab.github.io";
+
+const isAllowedOrigin = (origin: string | null) => !origin || allowedOrigins.has(origin);
+
+const corsHeaders = (origin: string | null) => ({
+  "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : defaultOrigin,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Vary": "Origin",
-};
+});
 
-const json = (body: Record<string, unknown>, status = 200) =>
+const jsonFor = (origin: string | null) => (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
   });
 
 // Per-isolate throttling is defense-in-depth only. Configure an edge/WAF rate
@@ -47,17 +63,15 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 Deno.serve(async (req: Request) => {
+  const origin = req.headers.get("origin");
+  const json = jsonFor(origin);
   if (req.method === "OPTIONS") {
-    const origin = req.headers.get("origin");
-    if (origin && origin !== corsHeaders["Access-Control-Allow-Origin"]) {
-      return new Response("Origin not allowed", { status: 403 });
-    }
-    return new Response("ok", { headers: corsHeaders });
+    if (!isAllowedOrigin(origin)) return new Response("Origin not allowed", { status: 403 });
+    return new Response("ok", { headers: corsHeaders(origin) });
   }
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
-  const origin = req.headers.get("origin");
-  if (origin && origin !== corsHeaders["Access-Control-Allow-Origin"]) {
+  if (!isAllowedOrigin(origin)) {
     return json({ error: "Origin not allowed." }, 403);
   }
 

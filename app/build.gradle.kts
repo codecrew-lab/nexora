@@ -1,6 +1,36 @@
+import javax.inject.Inject
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+}
+
+// The web portal at the repository root (the same files GitHub Pages serves) is
+// the single source of truth. It is copied into every APK at build time, so the
+// Android apps can never drift from the website. Do not add web files under
+// app/src/main/assets.
+abstract class SyncWebPortalTask : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val webFiles: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @get:Inject
+    abstract val fileSystem: FileSystemOperations
+
+    @TaskAction
+    fun sync() {
+        fileSystem.sync {
+            from(webFiles)
+            into(outputDirectory)
+        }
+    }
+}
+
+val webPortalFiles = rootProject.fileTree(rootProject.projectDir) {
+    include("*.html", "*.js", "*.css", "manifest.json", "pwa-icon.png", "pwa-icon.svg")
 }
 
 android {
@@ -70,6 +100,16 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val taskName = "sync" + variant.name.replaceFirstChar { it.uppercase() } + "WebPortal"
+        val syncWebPortal = tasks.register<SyncWebPortalTask>(taskName) {
+            webFiles.from(webPortalFiles)
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(syncWebPortal, SyncWebPortalTask::outputDirectory)
     }
 }
 

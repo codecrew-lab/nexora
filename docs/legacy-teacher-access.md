@@ -1,3 +1,5 @@
+> **Legacy.** This describes the original first-name + shared-code sign-in (`teacher-access` / `hyper-function`). The portal now uses the code-only sign-in in [teacher-login.md](teacher-login.md) via `bright-handler`. If `hyper-function` is still deployed, consider removing it so there is only one way to get a teacher session.
+
 # AURAWAY teacher access setup
 
 The teacher portal has **Sign up** and **Sign in** buttons. Both use a first name and the private teacher access code. The code is verified by a Supabase Edge Function; it is not embedded in the website's HTML or JavaScript.

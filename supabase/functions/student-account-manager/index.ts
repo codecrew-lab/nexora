@@ -1,15 +1,23 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const allowedOrigins = new Set([
-  "https://zaminmohammed78-bit.github.io",
-  "http://localhost:3000",
-  "http://127.0.0.1:5500",
-]);
+// Browser origins allowed to call this function: the GitHub Pages site, the
+// Android apps, and local development. The Android apps load pages from
+// file:///android_asset, which browsers report as the origin "null". That is
+// safe here because this function uses no cookies or ambient credentials.
+// Set the NEXORA_ALLOWED_ORIGINS secret (comma-separated) to override.
+const allowedOrigins = new Set(
+  (Deno.env.get("NEXORA_ALLOWED_ORIGINS") ??
+    "https://codecrew-lab.github.io,null,http://localhost:3000,http://127.0.0.1:5500")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const defaultOrigin = "https://codecrew-lab.github.io";
 
 function cors(origin: string | null) {
   const allowed = origin && allowedOrigins.has(origin)
     ? origin
-    : "https://zaminmohammed78-bit.github.io";
+    : defaultOrigin;
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -31,7 +39,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405, origin);
 
   try {
-    const token = (req.headers.get("Authorization") || "").replace(/^Bearer\\s+/i, "");
+    const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Sign in as a teacher first." }, 401, origin);
 
     const url = Deno.env.get("SUPABASE_URL");

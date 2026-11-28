@@ -1,0 +1,73 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web portal scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax-check shared scripts
+        run: for file in *.js; do node --check "$file"; done
+
+  backend:
+    name: Database and edge functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.1.4
+      - name: Type-check edge functions
+        run: deno check supabase/functions/*/index.ts
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm ci
+      - name: Migration and RFID database tests
+        working-directory: tests
+        run: npm run test:db
+      - name: Teacher portal RFID panel and register tests
+        working-directory: tests
+        run: npm run test:ui
+      - name: RFID endpoint end-to-end test
+        working-directory: tests
+        run: npm run test:e2e
+
+  firmware:
+    name: RFID reader firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create a placeholder config.h
+        working-directory: hardware/nexora_rfid_reader
+        run: sed 's/PASTE_THE_DEVICE_SECRET_HERE/ci-placeholder-secret-not-used-anywhere-00/' config.example.h > config.h
+      - uses: arduino/compile-sketches@v1
+        with:
+          fqbn: esp32:esp32:esp32
+          platforms: |
+            - name: esp32:esp32
+              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+              version: 2.0.17
+          libraries: |
+            - name: MFRC522
+              version: 1.4.11
+            - name: Adafruit SSD1306
+            - name: Adafruit GFX Library
+            - name: ArduinoJson
+              version: 7.2.1
+          sketch-paths: |
+            - hardware/nexora_rfid_reader
+          enable-deltas-report: false

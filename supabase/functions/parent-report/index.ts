@@ -1,10 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const allowedOrigins = new Set([
-  "https://zaminmohammed78-bit.github.io",
-  "http://localhost:3000",
-  "http://127.0.0.1:5500"
-]);
+// Browser origins allowed to call this function: the GitHub Pages site, the
+// Android apps, and local development. The Android apps load pages from
+// file:///android_asset, which browsers report as the origin "null". That is
+// safe here because this function uses no cookies or ambient credentials.
+// Set the NEXORA_ALLOWED_ORIGINS secret (comma-separated) to override.
+const allowedOrigins = new Set(
+  (Deno.env.get("NEXORA_ALLOWED_ORIGINS") ??
+    "https://codecrew-lab.github.io,null,http://localhost:3000,http://127.0.0.1:5500")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const defaultOrigin = "https://codecrew-lab.github.io";
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 15 * 60 * 1000;
@@ -13,7 +21,7 @@ const MAX_ATTEMPTS = 8;
 function cors(origin: string | null) {
   const allowed = origin && allowedOrigins.has(origin)
     ? origin
-    : "https://zaminmohammed78-bit.github.io";
+    : defaultOrigin;
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -91,7 +99,7 @@ Deno.serve(async (req: Request) => {
 
     const [{ data: attendance, error: attendanceError }, { data: assignments, error: assignmentsError }, { data: updates, error: updatesError }, { data: timetable, error: timetableError }] = await Promise.all([
       admin.from("attendance_records")
-        .select("attendance_date,status,created_at,marked_by")
+        .select("attendance_date,status,created_at,marked_by,source,scanned_at,is_late")
         .eq("student_code", code)
         .order("attendance_date", { ascending: false })
         .limit(365),

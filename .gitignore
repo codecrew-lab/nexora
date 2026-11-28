@@ -32,3 +32,10 @@ local.properties
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Firmware secrets: copy config.example.h to config.h locally, never commit it
+hardware/**/config.h
+
+# Stray local Arduino sketches at the repo root can contain Wi-Fi passwords and
+# the device secret. Firmware lives in hardware/.
+/*.ino
