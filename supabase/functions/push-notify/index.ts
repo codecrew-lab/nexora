@@ -14,18 +14,23 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
-const allowedOrigins = new Set([
-  "https://zaminmohammed78-bit.github.io",
-  "http://localhost:3000",
-  "http://127.0.0.1:5500",
-]);
-const APP_BASE_URL = "https://zaminmohammed78-bit.github.io/PULSE/";
+// Same origin list as the other NEXORA functions; override with NEXORA_ALLOWED_ORIGINS.
+const allowedOrigins = new Set(
+  (Deno.env.get("NEXORA_ALLOWED_ORIGINS") ??
+    "https://codecrew-lab.github.io,null,http://localhost:3000,http://127.0.0.1:5500")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const defaultOrigin = "https://codecrew-lab.github.io";
+// Where notification taps open. Override with the NEXORA_APP_URL secret if the site moves.
+const APP_BASE_URL = Deno.env.get("NEXORA_APP_URL") ?? "https://codecrew-lab.github.io/nexora/";
 const TEACHER_EMAIL = "teacher@auraway.app";
 const SCHOOL_TIMEZONE = "Asia/Kolkata";
 
 function cors(origin: string | null) {
   return {
-    "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : "https://zaminmohammed78-bit.github.io",
+    "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : defaultOrigin,
     "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
