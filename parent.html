@@ -10,6 +10,7 @@
   <script src="pwa-installer.js" defer></script>
   <script src="portal-switcher.js" defer></script>
   <script src="nexora-api.js"></script>
+  <script src="push-notifications.js" defer></script>
   <script src="attendance-utils.js"></script>
   <style>
     body { background: var(--bg-primary); color: var(--text-primary); }
@@ -71,6 +72,11 @@
         <p id="parentSessionExpiry" style="font-size:.78rem;color:var(--text-secondary);margin:9px 0 0;">Access remembered for up to 7 days on this device.</p>
       </section>
 
+
+      <div class="card" id="parentPushCard" style="margin-bottom:16px;">
+        <div class="parent-section-heading"><div><h3>🔔 Notifications</h3><p>Instant alerts on this phone for this child</p></div></div>
+        <div id="parentPushControls" style="margin-top:10px;"></div>
+      </div>
       <div class="parent-metric-grid" aria-label="Progress summary">
         <article class="parent-metric"><small>📅 Attendance</small><strong id="pAttendance">—</strong></article>
         <article class="parent-metric"><small>📖 Study activity</small><strong id="pStudyHours">—</strong></article>
@@ -150,7 +156,17 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    let parentPushCode = null;
+    function mountParentPush(code) {
+      parentPushCode = code;
+      const run = () => window.NEXORAPush && NEXORAPush.mount(document.getElementById("parentPushControls"), () => parentPushCode ? { role: "parent", code: parentPushCode } : null);
+      if (window.NEXORAPush) run(); else document.addEventListener("DOMContentLoaded", run, { once: true });
+    }
+
     function parentSignOut() {
+      // Signing out also stops notifications for this child on this device.
+      if (parentPushCode && window.NEXORAPush) NEXORAPush.disable("parent", parentPushCode).catch(() => {});
+      parentPushCode = null;
       try { localStorage.removeItem(PARENT_SESSION_KEY); } catch (_) {}
       showParentCodeEntry();
       document.getElementById('parentSessionExpiry').textContent =
@@ -283,6 +299,7 @@
         }
 
         rememberParentStudent(code);
+        mountParentPush(student.student_code || code);
         const accessHeading = document.querySelector('#parentAccessCard h3');
         const accessHint = document.querySelector('#parentAccessCard p');
         if (accessHeading) accessHeading.textContent = '🔑 Enter Your Child\'s Student Code';

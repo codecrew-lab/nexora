@@ -304,6 +304,9 @@ function NEXORAOpenSiblingSwitch(sibling) {
 }
 
 async function studentLogout() {
+  // Stop this student's notifications on this device before signing out.
+  const code = window.NEXORA_CURRENT_STUDENT?.student_code;
+  if (code && window.NEXORAPush) await NEXORAPush.disable("student", code).catch(() => {});
   if (nexoraClient) await nexoraClient.auth.signOut();
   localStorage.removeItem("auraway_student_code");
   localStorage.removeItem("auraway_student_profile");

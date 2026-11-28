@@ -58,6 +58,7 @@ function openPortal(page, origin = 'http://localhost:3000') {
   return { window, ...window.__nexora };
 }
 
+let raw;
 try {
   console.log('student sign-in');
   const student = openPortal('index.html');
@@ -319,6 +320,75 @@ try {
   r = await teacher.client.from('nexora_exams').select('id,title,subject,starts_at,duration_minutes,status').eq('created_by', TEACHER_ID).order('starts_at', { ascending: false });
   check('teacher lists published exams', !r.error && r.data.length === 1, r);
 
+  console.log('push notifications');
+  const device = name => ({ endpoint: `https://push.example/${name}`, keys: { p256dh: 'p'.repeat(87), auth: 'a'.repeat(22) } });
+  const pushCall = (portal, body) => portal.client.functions.invoke('push-notify', { body });
+  r = await student.client.from('push_subscriptions').select('*');
+  check('subscriptions are not readable from the browser', r.error?.code === '42501', r);
+  r = await pushCall(visitor, { action: 'subscribe', role: 'student', subscription: device('nobody') });
+  check('a student subscription needs a sign-in', r.error?.status === 401, r);
+  r = await pushCall(student, { action: 'subscribe', role: 'student', student_code: 'C8-002', subscription: device('asha-phone') });
+  check('a student subscribes this device', !r.error && r.data?.ok, r);
+  check('for their own code, whatever the page sends', (await q(`select student_code from push_subscriptions where endpoint like '%asha-phone'`))[0]?.student_code === 'C8-001');
+  r = await pushCall(visitor, { action: 'subscribe', role: 'parent', student_code: 'NOPE-0000', subscription: device('stranger') });
+  check('a parent needs a real student code', r.error?.status === 400 && /Invalid student code/.test(r.data?.error), r);
+  r = await pushCall(visitor, { action: 'subscribe', role: 'parent', student_code: ' c8-001 ', subscription: device('asha-mum') });
+  check('a parent subscribes with the student code', !r.error && r.data?.ok, r);
+  await pushCall(visitor, { action: 'subscribe', role: 'parent', student_code: 'C8-001', subscription: device('gone-old-phone') });
+  r = await pushCall(visitor, { action: 'subscribe', role: 'parent', student_code: 'C8-001', subscription: { endpoint: 'http://insecure.example/x', keys: { p256dh: 'p'.repeat(87), auth: 'a'.repeat(22) } } });
+  check('a malformed subscription is refused', r.error?.status === 400, r);
+
+  r = await pushCall(student, { action: 'broadcast', title: 'Hi', message: 'From a student' });
+  check('students cannot broadcast', r.error?.status === 403 && server.pushed.length === 0, r);
+  r = await pushCall(teacher, { action: 'broadcast', title: 'Holiday tomorrow', message: 'School is closed.', target: 'ALL', audience: 'all' });
+  check('teacher broadcast reaches students and parents', !r.error && r.data.sent === 2 && r.data.devices === 3, r.data);
+  const toParent = server.pushed.find(n => n.endpoint.endsWith('asha-mum'));
+  check('each role is sent to its own page', toParent?.title === '🔔 Holiday tomorrow' && toParent.url === 'https://codecrew-lab.github.io/nexora/parent.html' && server.pushed.find(n => n.endpoint.endsWith('asha-phone'))?.url.endsWith('/index.html'), server.pushed);
+  check('a device that has unsubscribed is forgotten', (await q(`select count(*)::int n from push_subscriptions where endpoint like '%gone%'`))[0].n === 0);
+  server.pushed.length = 0;
+  r = await pushCall(teacher, { action: 'broadcast', title: 'Class 9 only', message: 'x', target: 'CLASS:Class 9', audience: 'all' });
+  check('a broadcast to another class reaches nobody here', !r.error && r.data.sent === 0 && server.pushed.length === 0, r.data);
+
+  // Automatic alerts: the database queues the change, the server sends it.
+  await db.exec('delete from push_outbox');
+  r = await teacher.client.from('assignments').insert([{ title: 'Read chapter 4', subject: 'English', due_date: '2026-12-05', target_code: 'CLASS:Class 8' }]);
+  check('saving an assignment queues an alert', !r.error && (await q('select count(*)::int n from push_outbox'))[0].n === 1, r);
+  check('nothing is sent until the server collects the queue', server.pushed.length === 0);
+  let delivered = await server.push.processOutbox();
+  const homework = server.pushed.find(n => n.endpoint.endsWith('asha-phone'));
+  check('new assignment alert goes to the class and their parents', delivered === 2 && homework?.title === '📚 New assignment: English' && /Read chapter 4 · Due 5 Dec/.test(homework.body) && homework.url.endsWith('/classroom.html') && server.pushed.find(n => n.endpoint.endsWith('asha-mum'))?.title === '📚 New homework: English', server.pushed);
+  check('the queue is emptied', (await q('select count(*)::int n from push_outbox'))[0].n === 0 && await server.push.processOutbox() === 0);
+
+  server.pushed.length = 0;
+  const todayIst = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  r = await teacher.client.from('attendance_records').upsert([{ student_code: 'C8-001', attendance_date: todayIst, status: 'Absent' }], { onConflict: 'student_code,attendance_date' });
+  await server.push.processOutbox();
+  check('marking a student absent alerts the parent only', !r.error && server.pushed.length === 1 && server.pushed[0].endpoint.endsWith('asha-mum') && server.pushed[0].title === '⚠️ Attendance alert' && /Asha Rao was marked absent today/.test(server.pushed[0].body), server.pushed);
+  server.pushed.length = 0;
+  await teacher.client.from('attendance_records').upsert([{ student_code: 'C8-001', attendance_date: todayIst, status: 'Absent' }], { onConflict: 'student_code,attendance_date' });
+  await teacher.client.from('attendance_records').upsert([{ student_code: 'C8-001', attendance_date: '2026-11-20', status: 'Absent' }], { onConflict: 'student_code,attendance_date' });
+  await server.push.processOutbox();
+  check('saving the same status again, or an old date, alerts nobody', server.pushed.length === 0, server.pushed);
+  await db.exec(`delete from attendance_records where student_code = 'C8-001' and attendance_date = '${todayIst}'; update student_rfid_cards set active = true where card_uid = '39C38E02'`);
+  tap = await (await fetch(`${server.url}/api/rfid/attendance`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-pulse-device-secret': 'test-secret-0123456789abcdef0123456789' }, body: JSON.stringify({ card_uid: '39C38E02', device_id: 'main-gate' }) })).json();
+  await server.push.processOutbox();
+  check('an RFID tap tells the parent their child arrived', tap.result === 'present_marked' && server.pushed.length === 1 && /Asha Rao arrived at school at \d/.test(server.pushed[0].body), { tap, pushed: server.pushed });
+  server.pushed.length = 0;
+  r = await teacher.client.from('student_marks').insert({ student_id: 1, exam_name: 'Unit test 1', subject: 'Maths', marks_obtained: 18, marks_total: 20, created_by: TEACHER_ID });
+  await server.push.processOutbox();
+  check('new marks alert the student and the parent', !r.error && server.pushed.length === 2 && server.pushed.some(n => n.body === 'You scored 18/20 in Maths (Unit test 1).') && server.pushed.some(n => n.body === 'Asha Rao scored 18/20 in Maths (Unit test 1).'), server.pushed);
+  await db.exec(`insert into push_outbox (table_name, record, created_at) values ('assignments', '{"title":"Old news","target_code":"ALL"}', now() - interval '3 hours')`);
+  server.pushed.length = 0;
+  await server.push.processOutbox();
+  check('alerts that waited too long are dropped, not sent late', server.pushed.length === 0 && (await q('select count(*)::int n from push_outbox'))[0].n === 0, server.pushed);
+
+  r = await pushCall(student, { action: 'unsubscribe', endpoint: device('asha-phone').endpoint, role: 'student', student_code: 'C8-001' });
+  check('unsubscribe removes the device', !r.error && (await q(`select count(*)::int n from push_subscriptions where endpoint like '%asha-phone'`))[0].n === 0, r);
+  const off = await startServer(db, { vapidPublicKey: '', vapidPrivateKey: '' });
+  raw = await fetch(`${off.url}/api/functions/push-notify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', role: 'parent', student_code: 'C8-001', subscription: device('x') }) });
+  check('without keys the feature reports it is not configured', raw.status === 503 && await off.push.processOutbox() === 0);
+  await off.close();
+
   console.log('student-account-manager');
   r = await student.client.functions.invoke('student-account-manager', { body: { student_id: 2, password: 'vikram-password-1' } });
   check('students cannot set passwords', r.error?.status === 403 && /authorized teacher/.test(r.data?.error), r);
@@ -356,7 +426,7 @@ try {
   r = await teacher.client.from('students').select('id');
   check('an expired token is retried after a refresh', !r.error && r.data.length === (await q('select count(*)::int n from students'))[0].n, r);
   const forged = signJwt({ sub: TEACHER_ID, role: 'authenticated', email: 'teacher@auraway.app', exp: Math.floor(Date.now() / 1000) + 600 }, 'some-other-secret-that-is-long-enough-000');
-  let raw = await fetch(`${server.url}/api/db/query`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${forged}` }, body: JSON.stringify({ table: 'students', action: 'select' }) });
+  raw = await fetch(`${server.url}/api/db/query`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${forged}` }, body: JSON.stringify({ table: 'students', action: 'select' }) });
   check('a token signed with another key is refused', raw.status === 401 && (await raw.json()).error.code === 'invalid_token');
 
   await db.exec(`update auth.nexora_sessions set expires_at = now() - interval '1 minute' where user_id = '${TEACHER_ID}'`);
@@ -376,8 +446,8 @@ try {
   r = await parent.client.functions.invoke('parent-report', { body: { student_code: ' c8-001 ' } });
   check('report by student code (Android "null" origin)', !r.error && r.data?.success && r.data.student.student_name === 'Asha Rao' && !('id' in r.data.student), r);
   check('report lists attendance, assignments, updates, timetable',
-    r.data?.attendance.length === 2 && r.data.attendance[0].attendance_date === '2026-11-27' &&
-    r.data.assignments.map(a => a.title).join() === 'Algebra sheet,Essay' && r.data.updates.length === 2 && r.data.timetable.length === 1, r.data);
+    r.data?.attendance.map(a => a.attendance_date).slice(1).join() === '2026-11-27,2026-11-26,2026-11-20' && r.data.attendance[0].source === 'rfid' &&
+    r.data.assignments.map(a => a.title).join() === 'Algebra sheet,Essay,Read chapter 4' && r.data.updates.length === 2 && r.data.timetable.length === 1, r.data);
   r = await parent.client.functions.invoke('parent-report', { body: { student_code: 'NOPE-0000' } });
   check('unknown code -> success:false', !r.error && r.data?.success === false, r);
   r = await parent.client.functions.invoke('parent-report', { body: { student_code: "x' or 1=1 --" } });

@@ -18,5 +18,10 @@ export function loadConfig(env = process.env) {
     rfidDeviceSecret: env.PULSE_RFID_DEVICE_SECRET || '',
     allowedOrigins: (env.NEXORA_ALLOWED_ORIGINS ?? DEFAULT_ORIGINS).split(',').map(value => value.trim()).filter(Boolean),
     trustProxy: env.TRUST_PROXY === '1' || env.TRUST_PROXY === 'true',
+    // Web push notifications; without the two keys the feature is switched off.
+    vapidPublicKey: env.VAPID_PUBLIC_KEY || '',
+    vapidPrivateKey: env.VAPID_PRIVATE_KEY || '',
+    vapidSubject: env.VAPID_SUBJECT || '',
+    appUrl: env.NEXORA_APP_URL || 'https://codecrew-lab.github.io/nexora/',
   };
 }

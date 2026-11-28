@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { createApp } from '../server/src/app.js';
 import { createPgliteDatabase } from '../server/src/db.js';
+import { createPushService } from '../server/src/push.js';
 
 export const repo = fileURLToPath(new URL('..', import.meta.url));
 const read = file => fs.readFileSync(`${repo}/${file}`, 'utf8');
@@ -47,16 +48,29 @@ export const baseConfig = {
   rfidDeviceSecret: 'test-secret-0123456789abcdef0123456789',
   allowedOrigins: ['https://codecrew-lab.github.io', 'null', 'http://localhost:3000'],
   trustProxy: false,
+  // Any non-empty values switch notifications on; tests never contact a real push service.
+  vapidPublicKey: 'test-public-key',
+  vapidPrivateKey: 'test-private-key',
+  appUrl: 'https://codecrew-lab.github.io/nexora/',
 };
 
 export async function startServer(pglite, config = {}) {
   const errors = [];
-  const app = createApp({
-    db: createPgliteDatabase(pglite),
-    config: { ...baseConfig, ...config },
-    log: { error: (...args) => errors.push(args.map(String).join(' ')), warn() {}, log() {} },
+  const log = { error: (...args) => errors.push(args.map(String).join(' ')), warn() {}, log() {} };
+  const database = createPgliteDatabase(pglite);
+  const settings = { ...baseConfig, ...config };
+  // Stand-in for the browser push services: records what would be sent. An
+  // endpoint containing "gone" answers like a device that has unsubscribed.
+  const pushed = [];
+  const push = createPushService({
+    db: database, config: settings, log,
+    send: async (subscription, payload) => {
+      if (subscription.endpoint.includes('gone')) throw Object.assign(new Error('Gone'), { statusCode: 410 });
+      pushed.push({ endpoint: subscription.endpoint, ...JSON.parse(payload) });
+    },
   });
+  const app = createApp({ db: database, config: settings, log, push });
   const server = http.createServer(app);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  return { url: `http://127.0.0.1:${server.address().port}`, errors, close: () => new Promise(resolve => server.close(resolve)) };
+  return { url: `http://127.0.0.1:${server.address().port}`, errors, push, pushed, close: () => new Promise(resolve => server.close(resolve)) };
 }

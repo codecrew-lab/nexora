@@ -142,6 +142,7 @@
         <button type="button" class="btn" onclick="document.getElementById('enrollStudentForm').scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('enrollName').focus({preventScroll:true})">＋ Add user</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherAttendanceManager').scrollIntoView({behavior:'smooth'})">Mark attendance</button>
         <button type="button" class="btn teacher-secondary-action" id="openTeacherAssignmentsPage">＋ Create / Publish Assignment</button>
+        <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherPushSection').scrollIntoView({behavior:'smooth'})">🔔 Send notification</button>
         <button type="button" class="btn teacher-secondary-action" id="openAssignmentStatusFromDashboard">📊 Assignment Completion Status</button>
         <button type="button" class="btn teacher-secondary-action" onclick="document.getElementById('teacherExamManager').scrollIntoView({behavior:'smooth'})">＋ Assign an Exam</button>
       </div>
@@ -162,6 +163,21 @@
       </div>
     </section>
 
+
+    <section id="teacherPushSection" class="card" style="margin:0 0 22px;scroll-margin-top:20px;" aria-labelledby="teacherPushHeading">
+      <div class="teacher-command-heading" style="margin-bottom:14px;">
+        <div><span class="teacher-eyebrow">ANNOUNCEMENTS</span><h2 id="teacherPushHeading">🔔 Send Notification</h2><p>Send an instant alert to students and parents who have turned on notifications. New assignments, marks and attendance are sent automatically.</p></div>
+      </div>
+      <form id="teacherPushForm" style="display:grid;gap:10px;">
+        <input id="pushTitle" class="input-field" maxlength="80" required placeholder="Title (e.g. School closed tomorrow)">
+        <textarea id="pushMessage" class="input-field" maxlength="300" rows="3" required placeholder="Message (up to 300 characters)" style="resize:vertical;font-family:inherit;"></textarea>
+        <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+          <label style="display:grid;gap:4px;font-size:.85rem;color:var(--text-secondary);">Send to<select id="pushTarget" class="input-field"><option value="ALL">All students</option></select></label>
+          <label style="display:grid;gap:4px;font-size:.85rem;color:var(--text-secondary);">Who receives it<select id="pushAudience" class="input-field"><option value="both">Students and parents</option><option value="students">Students only</option><option value="parents">Parents only</option></select></label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><button type="submit" class="btn" id="pushSendButton">📣 Send notification</button><p id="pushSendStatus" role="status" style="margin:0;font-size:.85rem;color:var(--text-secondary);"></p></div>
+      </form>
+    </section>
 
     <section id="teacherExamManager" class="card" style="margin:0 0 22px;scroll-margin-top:20px;">
       <div class="teacher-command-heading" style="margin-bottom:14px;">
@@ -594,6 +610,7 @@
       allStudents = data || [];
       populateAttendanceClasses();
       populateAssignmentTargets();
+      populatePushTargets();
       renderTeacherExamStudentOptions();
       populateTeacherMarkStudents();
       updateTeacherOverview();
@@ -825,6 +842,56 @@
       });
       if ([...select.options].some(option => option.value === currentValue)) select.value = currentValue;
     }
+
+    // Notification targets: everyone, a class, or one student.
+    function populatePushTargets() {
+      const select = document.getElementById('pushTarget');
+      if (!select) return;
+      const currentValue = select.value || 'ALL';
+      const classes = [...new Set(allStudents.map(student => student.class_name).filter(Boolean))].sort();
+      select.replaceChildren(new Option('All students', 'ALL'));
+      if (classes.length) {
+        const group = document.createElement('optgroup');
+        group.label = 'Classes';
+        classes.forEach(className => group.append(new Option(className, 'CLASS:' + className)));
+        select.append(group);
+      }
+      const students = allStudents.filter(student => student.student_code).sort((a, b) => String(a.student_name).localeCompare(String(b.student_name)));
+      if (students.length) {
+        const group = document.createElement('optgroup');
+        group.label = 'One student';
+        students.forEach(student => group.append(new Option((student.student_name || 'Student') + ' (' + student.student_code + ')', student.student_code)));
+        select.append(group);
+      }
+      if ([...select.options].some(option => option.value === currentValue)) select.value = currentValue;
+    }
+
+    document.getElementById('teacherPushForm')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = document.getElementById('pushSendButton');
+      const status = document.getElementById('pushSendStatus');
+      const title = document.getElementById('pushTitle').value.trim();
+      const message = document.getElementById('pushMessage').value.trim();
+      if (!title || !message) return;
+      button.disabled = true;
+      status.textContent = 'Sending…';
+      try {
+        const { data, error } = await nexoraClient.functions.invoke('push-notify', {
+          body: { action: 'broadcast', title, message, target: document.getElementById('pushTarget').value, audience: document.getElementById('pushAudience').value }
+        });
+        if (error || data?.error) {
+          throw new Error(data?.error || error?.message || 'Could not send the notification.');
+        }
+        status.textContent = data.sent
+          ? '✅ Sent to ' + data.sent + (data.sent === 1 ? ' device.' : ' devices.')
+          : 'No one in this group has turned on notifications yet.';
+        if (data.sent) event.target.reset();
+      } catch (error) {
+        status.textContent = '⚠️ ' + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
 
     async function loadAttendanceRoster(statusMessage) {
       const className = document.getElementById('attendanceClassSelect').value;

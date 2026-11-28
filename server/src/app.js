@@ -9,6 +9,7 @@
 //   POST /api/functions/parent-report            parent view by student code
 //   POST /api/functions/student-account-manager  teacher sets a student password
 //   POST /api/functions/student-enroll           teacher adds a student, login and RFID card
+//   POST /api/functions/push-notify              notification subscribe / unsubscribe / teacher broadcast
 //   POST /api/rfid/attendance       RFID readers (device secret, not browsers)
 //   GET  /healthz
 import crypto from 'node:crypto';
@@ -63,11 +64,12 @@ async function readJson(req) {
   }
 }
 
-export function createApp({ db, config, log = console }) {
+export function createApp({ db, config, log = console, push = null }) {
   const allowedOrigins = new Set(config.allowedOrigins);
   const teacherLimiter = createLimiter(5);
   const studentLimiter = createLimiter(10);
   const parentLimiter = createLimiter(8);
+  const pushLimiter = createLimiter(20);
   const functionCache = new Map();
 
   // Behind a reverse proxy the caller's address is the LAST X-Forwarded-For
@@ -413,6 +415,97 @@ export function createApp({ db, config, log = console }) {
     }
   }
 
+  // Web push notifications (server/src/push.js sends them).
+  //   subscribe    a student (signed in) or a parent (student code) saves this device
+  //   unsubscribe  removes this device's subscriptions, by endpoint
+  //   broadcast    a teacher sends a message to everyone, a class or one student
+  async function pushNotify(req, res, body) {
+    if (!push?.configured) return send(res, 503, { error: 'Notifications are not configured yet.' });
+    const text = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
+    const action = text(body.action, 20);
+    const codeOf = value => text(value, 40).toUpperCase();
+
+    try {
+      if (action === 'subscribe') {
+        const subscription = body.subscription && typeof body.subscription === 'object' ? body.subscription : {};
+        const endpoint = text(subscription.endpoint, 1000);
+        const p256dh = text(subscription.keys?.p256dh, 200);
+        const auth = text(subscription.keys?.auth, 100);
+        if (!endpoint.startsWith('https://') || p256dh.length < 20 || auth.length < 8) {
+          return send(res, 400, { error: 'Invalid push subscription.' });
+        }
+
+        let studentCode;
+        if (body.role === 'student') {
+          // Throws 401 for a missing, bad or expired token.
+          const context = requestContext(req);
+          if (context.role !== 'authenticated') return send(res, 401, { error: 'Please sign in again.' });
+          const { rows } = await db.run(null, query => query(
+            'select student_code from public.students where auth_user_id = $1', [context.claims.sub]));
+          if (!rows[0]?.student_code) return send(res, 403, { error: 'This login is not linked to a student.' });
+          studentCode = rows[0].student_code;
+        } else if (body.role === 'parent') {
+          // Parents have no account, so this path is open: limit guessing of codes.
+          const ip = clientIp(req);
+          if (pushLimiter.blocked(ip)) return send(res, 429, { error: 'Too many attempts. Please wait and try again.' });
+          pushLimiter.hit(ip);
+          studentCode = codeOf(body.student_code);
+          const known = /^[A-Z0-9-]{4,40}$/.test(studentCode) && (await db.run(null, query => query(
+            'select 1 from public.students where student_code = $1', [studentCode]))).rows.length === 1;
+          if (!known) return send(res, 400, { error: 'Invalid student code.' });
+        } else {
+          return send(res, 400, { error: 'Unknown role.' });
+        }
+
+        await db.run(null, query => query(
+          `insert into public.push_subscriptions (endpoint, p256dh, auth, role, student_code, user_agent)
+           values ($1, $2, $3, $4, $5, $6)
+           on conflict (endpoint, role, student_code)
+           do update set p256dh = excluded.p256dh, auth = excluded.auth, user_agent = excluded.user_agent, updated_at = now()`,
+          [endpoint, p256dh, auth, body.role, studentCode, text(req.headers['user-agent'], 300) || null]));
+        return send(res, 200, { ok: true });
+      }
+
+      if (action === 'unsubscribe') {
+        // The endpoint is a long unguessable URL known only to the device and us.
+        const endpoint = text(body.endpoint, 1000);
+        if (!endpoint) return send(res, 400, { error: 'Missing endpoint.' });
+        const params = [endpoint];
+        let sql = 'delete from public.push_subscriptions where endpoint = $1';
+        if (body.role === 'student' || body.role === 'parent') { params.push(body.role); sql += ` and role = $${params.length}`; }
+        const code = codeOf(body.student_code);
+        if (code) { params.push(code); sql += ` and student_code = $${params.length}`; }
+        await db.run(null, query => query(sql, params));
+        return send(res, 200, { ok: true });
+      }
+
+      if (action === 'broadcast') {
+        if (!await requireTeacher(req, res, 'Teacher sign-in required.')) return;
+        const title = text(body.title, 80);
+        const message = text(body.message, 300);
+        if (!title || !message) return send(res, 400, { error: 'Enter a title and a message.' });
+        const audience = text(body.audience, 20);
+        const roles = audience === 'students' ? ['student'] : audience === 'parents' ? ['parent'] : ['student', 'parent'];
+        const rows = await db.run(null, async query =>
+          push.findSubscriptions(query, roles, await push.codesForTarget(query, text(body.target, 160) || 'ALL')));
+        const tag = 'broadcast-' + Date.now();
+        const sent = await push.deliver(rows, role => ({
+          title: '🔔 ' + title,
+          body: message,
+          url: role === 'parent' ? 'parent.html' : 'index.html',
+          tag,
+        }));
+        return send(res, 200, { ok: true, sent, devices: rows.length });
+      }
+
+      return send(res, 400, { error: 'Unknown action.' });
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      log.error('push-notify failed:', error?.message || error);
+      send(res, 500, { error: 'Notification request failed. Please try again.' });
+    }
+  }
+
   // ------------------------------------------------------------ RFID reader
   // Called by the ESP32 readers in hardware/nexora_rfid_reader.
   //   scan:      { "card_uid": "39C38E02", "device_id": "main-gate", "scanned_at": 1764213000 }
@@ -495,6 +588,7 @@ export function createApp({ db, config, log = console }) {
     ['/api/functions/parent-report', parentReport],
     ['/api/functions/student-account-manager', studentAccountManager],
     ['/api/functions/student-enroll', studentEnroll],
+    ['/api/functions/push-notify', pushNotify],
   ]);
 
   return async function handle(req, res) {

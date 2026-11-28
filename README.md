@@ -29,6 +29,7 @@ records in their portals.
   attendance-utils.js     Shared attendance display rules (RFID vs manual, late)
   teacher-rfid.js         Teacher portal RFID panel
   teacher-enroll.js       Teacher portal: add a user and map their RFID card
+  push-notifications.js   Turn notifications on or off for this device
   sw.js, pwa-installer.js Offline cache and install prompt
 app/                    Android apps (Kotlin WebView). Web files are copied in at build time.
 hardware/
@@ -39,6 +40,7 @@ server/                 NEXORA server: sign-in, data access, parent report, stud
   src/app.js              Routes
   src/query.js            Table and RPC requests → parameterised SQL
   src/auth.js             Passwords, tokens, sessions
+  src/push.js             Web push notifications
   scripts/db.js           npm run db:setup | db:migrate | db:check
 db/
   platform.sql            Roles, auth schema and auth.uid()/auth.jwt(). Applied first
@@ -99,5 +101,6 @@ git-ignored):
 | `DATABASE_URL` | The PostgreSQL connection, including its password |
 | `JWT_SECRET` | Signing session tokens |
 | `PULSE_RFID_DEVICE_SECRET` | RFID readers → `/api/rfid/attendance` |
+| `VAPID_PRIVATE_KEY` | Sending push notifications (the matching public key is in `push-notifications.js`) |
 | `TEACHER_LOGIN_CODE`, `TEACHER_ACCESS_CODE` | Teacher sign-in |
 | `NEXORA_ALLOWED_ORIGINS` (optional) | Overrides the browser origin allowlist |

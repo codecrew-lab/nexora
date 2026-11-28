@@ -23,7 +23,7 @@ const NEXORA_API_URL = (() => {
 // sign out the Student portal (and vice versa) in the same browser.
 const NEXORA_PORTAL_ROLE = (() => {
   const page = window.location.pathname.split('/').pop().toLowerCase();
-  if (page === 'teacher.html' || (page === 'calendar.html' && new URLSearchParams(window.location.search).get('portal') === 'teacher')) return 'teacher';
+  if (page === 'teacher.html') return 'teacher';
   if (page === 'parent.html') return 'parent';
   return 'student';
 })();

@@ -39,9 +39,6 @@
     render();
   });
 
-  // Remove the retired Wellness destination from every shared portal menu.
-  sidebar.querySelectorAll('a[href="wellness.html"]').forEach(link => link.closest('li')?.remove());
-
   const currentPage = location.pathname.split('/').pop() || 'index.html';
   sidebar.querySelectorAll('.nav-links a').forEach(link => {
     const active = link.getAttribute('href') === currentPage;

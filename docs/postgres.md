@@ -23,8 +23,12 @@ ESP32 readers ──HTTPS, device secret──►  /api/rfid/attendance
   each user may read and write. The server adds no permissions of its own.
 - **Server functions.** Teacher code sign-in, `student-enroll` (add a user with
   their login and RFID card), `student-account-manager` (set a password),
-  `parent-report` and the reader endpoint run with the server's own database
-  privileges, after their own checks.
+  `parent-report`, `push-notify` and the reader endpoint run with the server's
+  own database privileges, after their own checks.
+- **Notifications.** Triggers on assignments, attendance and marks queue each
+  change in `push_outbox`. The server collects the queue every five seconds and
+  sends web push notifications to subscribed students and parents
+  (`server/src/push.js`), so a failed push never affects a teacher's save.
 
 ## Set up the database
 
@@ -59,6 +63,7 @@ added from the teacher portal (*Add User & Map RFID Card*).
 | `JWT_SECRET` | Signs session tokens. At least 32 random characters. Changing it signs everyone out |
 | `TEACHER_LOGIN_CODE`, `TEACHER_ACCESS_CODE` | Teacher portal sign-in codes |
 | `PULSE_RFID_DEVICE_SECRET` | Shared secret of the RFID readers, at least 32 characters |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web push notifications. Optional: without them the feature is off. The public key is also in `push-notifications.js` |
 | `NEXORA_ALLOWED_ORIGINS` | Optional. Browser origins allowed to call the API |
 | `TRUST_PROXY` | Set to `1` behind a reverse proxy, so rate limits see real client addresses |
 | `PORT` | Default 8787 |

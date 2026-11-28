@@ -46,3 +46,6 @@ hardware/**/config.h
 .env.*
 !.env.example
 server/node_modules/
+
+# Push notification keys (never commit)
+.secrets/

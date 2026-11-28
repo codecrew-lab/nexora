@@ -63,6 +63,7 @@ const TABLES = [
   'student_marks', 'student_rfid_cards', 'rfid_devices', 'rfid_scan_events', 'pulse_timetable',
   'nexora_exams', 'nexora_exam_targets', 'academic_calendar_events', 'schools',
   'quiz_questions', 'quiz_attempts', 'student_sibling_links', 'student_sibling_link_requests',
+  'push_subscriptions', 'push_outbox',
 ];
 const FUNCTIONS = [
   'is_auraway_teacher', 'record_rfid_scan', 'rfid_device_heartbeat',

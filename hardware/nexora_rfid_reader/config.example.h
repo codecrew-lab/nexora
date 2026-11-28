@@ -10,8 +10,8 @@
 // ---------------------------------------------------------------------------
 // Wi-Fi (2.4 GHz only; the ESP32 cannot join 5 GHz networks)
 // ---------------------------------------------------------------------------
-#define WIFI_SSID      "YOUR_WIFI_NAME"
-#define WIFI_PASSWORD  "YOUR_WIFI_PASSWORD"
+#define WIFI_SSID      ""
+#define WIFI_PASSWORD  ""
 
 // ---------------------------------------------------------------------------
 // Server

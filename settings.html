@@ -3,6 +3,7 @@
 <head>
 <script src="nexora-api.js"></script>
 <script src="student-auth.js"></script>
+<script src="push-notifications.js" defer></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXORA — Settings & Profile</title>
@@ -37,7 +38,7 @@
     <!-- Navigation Sidebar -->
     <sidebar id="aurawaySidebar" aria-label="Main navigation">
       <div class="logo-area" style="display:flex;align-items:center;gap:8px;"><img class="nexora-app-logo" src="pwa-icon.png" width="28" height="28" alt="NEXORA" style="border-radius:7px;object-fit:cover;"><span class="logo-text">NEXORA</span></div>
-      <ul class="nav-links" id="aurawayNavLinks"><li><a href="index.html">📊 Dashboard</a></li><li><a href="planner.html">📅 Study Planner</a></li><li><a href="timetable.html">🗓️ Timetable</a></li><li><a href="exam.html">🎯 Exams</a></li><li><a href="marks.html">📈 Marks Manager</a></li><li><a href="attendance.html">📋 Attendance</a></li><li><a href="flashcards.html">🗂️ Flashcards</a></li><li><a href="classroom.html">🎓 Classroom</a></li><li><a href="focus.html">⏱️ Focus Centre</a></li><li><a href="notes.html">📝 Digital Notes</a></li><li><a href="wellness.html">🌱 Wellness</a></li><li><a href="progress.html">🏆 Progress</a></li><li><a href="search.html">🔍 Search</a></li><li><a href="settings.html">⚙️ Settings</a></li></ul>
+      <ul class="nav-links" id="aurawayNavLinks"><li><a href="index.html">📊 Dashboard</a></li><li><a href="planner.html">📅 Study Planner</a></li><li><a href="timetable.html">🗓️ Timetable</a></li><li><a href="exam.html">🎯 Exams</a></li><li><a href="marks.html">📈 Marks Manager</a></li><li><a href="attendance.html">📋 Attendance</a></li><li><a href="classroom.html">🎓 Classroom</a></li><li><a href="settings.html">⚙️ Settings</a></li></ul>
       <button class="btn" id="themeToggle" style="margin-top: auto;">Theme</button>
     </sidebar>
 
@@ -48,6 +49,13 @@
           <h1>Settings & Account ⚙️</h1>
           <p>Customize your profile, preferences, and manage offline data backups.</p>
         </div>
+      </div>
+
+      <!-- Push Notifications -->
+      <div class="card" style="margin-bottom: 24px;" id="studentPushCard">
+        <h3>🔔 Notifications</h3>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 4px 0 14px;">Get an alert on this device when your teacher posts an assignment, publishes marks or sends a message.</p>
+        <div id="studentPushControls"></div>
       </div>
 
       <!-- Profile Settings -->
@@ -75,7 +83,7 @@
       <div class="card" style="margin-bottom: 24px;">
         <h3>💾 Offline Data Backup & Restore</h3>
         <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; margin-bottom: 16px;">
-          Export all your tasks, notes, flashcards, and focus stats into a secure backup file or restore them anytime.
+          Export your study tasks, timetable and preferences into a backup file or restore them anytime.
         </p>
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn" onclick="exportData()">📥 Export Backup (JSON)</button>
@@ -118,6 +126,11 @@
       html.setAttribute('data-theme', nextTheme);
       localStorage.setItem('auraway_theme', nextTheme);
     });
+
+    window.addEventListener("NEXORAStudentReady", event => {
+      const code = event.detail?.profile?.student_code;
+      if (window.NEXORAPush && code) NEXORAPush.mount(document.getElementById("studentPushControls"), () => ({ role: "student", code }));
+    }, { once: true });
 
     const PROFILE_KEY='auraway_profile_name';
     const DATA_KEYS=['auraway_tasks','auraway_focus_stats','auraway_assignments','auraway_water','auraway_attendance','auraway_exams','auraway_marks','auraway_notes','auraway_flashcards','auraway_student_code','auraway_habits','auraway_study_days','auraway_dashboard_prefs','auraway_tt_subjects','auraway_tt_schedule',PROFILE_KEY,'auraway_theme'];

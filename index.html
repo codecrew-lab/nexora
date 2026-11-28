@@ -3,6 +3,7 @@
 <head>
 <script src="nexora-api.js"></script>
 <script src="student-auth.js"></script>
+<script src="push-notifications.js" defer></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101426">
@@ -76,17 +77,12 @@
           <li><a href="exam.html">🎯 <span>Exams</span></a></li>
           <li><a href="quiz.html">🧠 <span>Daily Quiz</span></a></li>          <li><a href="marks.html">📈 <span>Marks Manager</span></a></li>
           <li><a href="attendance.html">📋 <span>Attendance</span></a></li>
-          <li><a href="flashcards.html">🗂️ <span>Flashcards</span></a></li>
           <li><a href="classroom.html">🎓 <span>Classroom</span></a></li>
-          <li><a href="notes.html">📝 <span>Digital Notes</span></a></li>
         </ul></section>
         <section class="student-nav-section"><h2>INSIGHTS</h2><ul>
           <li><a href="analytics.html">📊 <span>Analytics</span></a></li>
-          <li><a href="focus.html">⏱️ <span>Focus Centre</span></a></li>
-          <li><a href="progress.html">🏆 <span>Progress</span></a></li>
         </ul></section>
         <section class="student-nav-section"><h2>MORE</h2><ul>
-          <li><a href="search.html">🔍 <span>Search</span></a></li>
           <li><a href="settings.html">⚙️ <span>Settings</span></a></li>
         </ul></section>
       </nav>
@@ -148,17 +144,23 @@
         <div data-sibling-list style="display:grid;gap:8px;margin-top:12px;">Loading linked accounts…</div>
       </section>
 
+      <section class="card" id="pushPromptCard" hidden style="margin-bottom:24px;" aria-labelledby="pushPromptTitle">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div>
+            <h3 id="pushPromptTitle">🔔 Turn on notifications</h3>
+            <p style="color:var(--text-secondary);font-size:.85rem;margin:4px 0 12px;">Never miss a new assignment, new marks or a message from your teacher.</p>
+          </div>
+          <button type="button" class="btn" id="pushPromptDismiss" style="background:transparent;border:1px solid var(--border-color);color:var(--text-primary);padding:6px 12px;font-size:.8rem;">Not now</button>
+        </div>
+        <div id="pushPromptControls"></div>
+      </section>
+
       <!-- Real Live Stats Grid -->
       <div class="grid-cards" id="statsSection">
         <div class="card">
           <h3>Daily Task Progress</h3>
           <p id="dashCompletionPct" style="font-size: 2rem; font-weight: 700; color: var(--accent-primary); margin-top: 8px;">0%</p>
           <p id="dashCompletionSub" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">0 of 0 tasks completed</p>
-        </div>
-        <div class="card">
-          <h3>Focus Time Logged</h3>
-          <p id="dashFocusTime" style="font-size: 2rem; font-weight: 700; color: #10b981; margin-top: 8px;">0 mins</p>
-          <p id="dashFocusSub" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">0 sessions completed</p>
         </div>
         <div class="card">
           <h3>Pending Assignments</h3>
@@ -168,7 +170,7 @@
         <div class="card">
           <h3>Study Streak 🔥</h3>
           <p id="dashStudyStreak" style="font-size: 2rem; font-weight: 700; color: #f59e0b; margin-top: 8px;">0 days</p>
-          <p id="dashStreakSub" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">Complete a task or focus session to start.</p>
+          <p id="dashStreakSub" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">Complete a study task to start.</p>
         </div>
       </div>
 
@@ -218,10 +220,8 @@
         <div class="card">
           <h3>Quick Actions</h3>
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
-            <button class="btn" onclick="location.href='focus.html'">⏱️ Start Focus Session</button>
             <button class="btn" style="background:transparent;border:1px solid var(--border-color);color:var(--text-primary);" onclick="location.href='quiz.html'">🧠 Open Daily Quiz</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='planner.html'">➕ Add Study Task</button>
-            <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='notes.html'">📝 Create Note</button>
             <button class="btn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" onclick="location.href='exam.html'">🎯 View Exams</button>
           </div>
         </div>
@@ -302,18 +302,33 @@
     document.getElementById('snapshotAttendance').textContent = studentProfile?.attendance_pct || 'Not recorded';
     document.getElementById('snapshotStudyHours').textContent = studentProfile?.study_hours || 'Not recorded';
 
+    // Notification prompt: shown until the student turns notifications on or taps "Not now".
+    window.addEventListener("NEXORAStudentReady", async event => {
+      const card = document.getElementById("pushPromptCard");
+      const code = event.detail?.profile?.student_code;
+      let dismissed = false;
+      try { dismissed = localStorage.getItem("NEXORA_push_prompt_dismissed") === "1"; } catch (_) {}
+      if (!card || !code || !window.NEXORAPush || dismissed || !NEXORAPush.supported() && !/iphone|ipad|ipod/i.test(navigator.userAgent)) return;
+      if (typeof Notification !== "undefined" && Notification.permission === "denied") return;
+      if (await NEXORAPush.isEnabled("student", code)) return;
+      card.hidden = false;
+      NEXORAPush.mount(document.getElementById("pushPromptControls"), () => ({ role: "student", code }));
+      document.getElementById("pushPromptDismiss").addEventListener("click", () => {
+        try { localStorage.setItem("NEXORA_push_prompt_dismissed", "1"); } catch (_) {}
+        card.hidden = true;
+      });
+      window.addEventListener("NEXORAPushChanged", async () => {
+        if (await NEXORAPush.isEnabled("student", code)) setTimeout(() => { card.hidden = true; }, 1500);
+      });
+    }, { once: true });
+
     // Load Real Data from LocalStorage
     const tasks = JSON.parse(localStorage.getItem('auraway_tasks')) || [];
-    const focusStats = JSON.parse(localStorage.getItem('auraway_focus_stats')) || { totalMinutes: 0, sessions: 0 };
     // 1. Task Progress
     const completedTasks = tasks.filter(t => t.completed).length;
     const pct = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
     document.getElementById('dashCompletionPct').textContent = `${pct}%`;
     document.getElementById('dashCompletionSub').textContent = `${completedTasks} of ${tasks.length} tasks completed`;
-
-    // 2. Focus Time
-    document.getElementById('dashFocusTime').textContent = `${focusStats.totalMinutes} mins`;
-    document.getElementById('dashFocusSub').textContent = `${focusStats.sessions} sessions completed`;
 
     // Cloud assignment totals are filled from the server after secure student authentication.
     document.getElementById('dashPendingAssign').textContent = 'Loading…';
@@ -426,7 +441,7 @@
       }, { once: true });
     }
 
-    // Study streak from real task/focus activity dates
+    // Study streak from real study task activity dates
     function getStudyStreak() {
       let days = [];
       try { days = JSON.parse(localStorage.getItem('auraway_study_days') || '[]'); } catch (e) {}
@@ -440,7 +455,7 @@
     }
     const studyStreak = getStudyStreak();
     document.getElementById('dashStudyStreak').textContent = `${studyStreak} ${studyStreak === 1 ? 'day' : 'days'}`;
-    document.getElementById('dashStreakSub').textContent = studyStreak ? 'Keep it going — study a little each day!' : 'Complete a task or focus session to start.';
+    document.getElementById('dashStreakSub').textContent = studyStreak ? 'Keep it going — study a little each day!' : 'Complete a study task to start.';
 
     // Live exam countdown — refreshes every minute using the student's local time.
     function renderDashboardExamCountdown() {

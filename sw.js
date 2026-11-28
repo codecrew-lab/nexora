@@ -1,4 +1,4 @@
-const CACHE_NAME = 'NEXORA-Pwa-v36';
+const CACHE_NAME = 'NEXORA-Pwa-v37';
 
 // Keep this list limited to files that should be available offline.
 // Each file is cached independently so one missing/renamed optional page
@@ -15,15 +15,9 @@ const ASSETS_TO_CACHE = [
   './quiz.html',
   './marks.html',
   './attendance.html',
-  './flashcards.html',
   './classroom.html',
-  './notes.html',
   './analytics.html',
-  './focus.html',
-  './progress.html',
-  './search.html',
   './settings.html',
-  './calendar.html',
   './style.css',
   './navigation.js',
   './student-auth.js',
@@ -34,8 +28,10 @@ const ASSETS_TO_CACHE = [
   './pwa-installer.js',
   './portal-switcher.js',
   './back-navigation.js',
+  './push-notifications.js',
   './manifest.json',
-  './pwa-icon.svg'
+  './pwa-icon.svg',
+  './pwa-icon.png'
 ];
 
 const STATIC_ASSET_PATHS = new Set(
@@ -113,5 +109,43 @@ self.addEventListener('fetch', event => {
         headers: { 'Content-Type': 'text/plain; charset=utf-8' }
       });
     }
+  })());
+});
+
+// ---- Push notifications ----
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  const scope = self.registration.scope;
+  const title = data.title || 'NEXORA';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '',
+    icon: new URL('./pwa-icon.png', scope).href,
+    badge: new URL('./pwa-icon.png', scope).href,
+    tag: data.tag || undefined,
+    renotify: Boolean(data.tag),
+    data: { url: new URL(data.url || './index.html', scope).href }
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const scope = self.registration.scope;
+  let target = event.notification.data?.url || new URL('./index.html', scope).href;
+  // Only open pages inside NEXORA.
+  if (!target.startsWith(scope)) target = new URL('./index.html', scope).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if (client.url === target && 'focus' in client) return client.focus();
+    }
+    const existing = windows.find(client => client.url.startsWith(scope));
+    if (existing && 'navigate' in existing) {
+      await existing.navigate(target).catch(() => {});
+      return existing.focus();
+    }
+    return self.clients.openWindow(target);
   })());
 });
